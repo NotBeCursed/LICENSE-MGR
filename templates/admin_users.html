@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+{% block title %}Gestion des utilisateurs{% endblock %}
+
+{% block extra_style %}
+.admin-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+.admin-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #fff;
+}
+.admin-title span { color: var(--accent); }
+.admin-sub {
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--muted);
+  margin-top: .3rem;
+}
+
+.users-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 1.2rem;
+  align-items: start;
+}
+
+/* TABLE */
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.section-header {
+  padding: .75rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--accent);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+.section-body { padding: 1.2rem; }
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: .72rem;
+}
+.users-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 400;
+  font-size: .62rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: .4rem .6rem;
+  border-bottom: 1px solid var(--border);
+}
+.users-table td {
+  padding: .55rem .6rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+.users-table tr:last-child td { border-bottom: none; }
+.users-table tr:hover td { background: rgba(255,255,255,.02); }
+
+.role-badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: .62rem;
+  padding: .15rem .55rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.role-admin    { background: rgba(0,229,160,.1);  color: var(--accent); border: 1px solid rgba(0,229,160,.2); }
+.role-operator { background: rgba(245,166,35,.1); color: var(--warn);   border: 1px solid rgba(245,166,35,.2); }
+.role-readonly { background: rgba(90,99,112,.15); color: var(--muted);  border: 1px solid var(--border); }
+
+.td-actions { display: flex; gap: .4rem; }
+
+/* FORM */
+.form-field { margin-bottom: 1rem; }
+.form-field label {
+  display: block;
+  font-family: var(--mono);
+  font-size: .62rem;
+  color: var(--muted);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: .35rem;
+}
+.form-field input,
+.form-field select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: .8rem;
+  padding: .5rem .7rem;
+  border-radius: 2px;
+  outline: none;
+  transition: border-color .2s;
+}
+.form-field input:focus,
+.form-field select:focus { border-color: var(--accent); }
+.form-field select option { background: var(--surface); }
+
+.form-actions { display: flex; gap: .6rem; margin-top: .5rem; }
+
+/* MODAL */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 1.5rem;
+  width: 340px;
+  animation: fadeIn .2s ease;
+}
+.modal-title {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  margin-bottom: 1rem;
+}
+.modal-actions { display: flex; gap: .6rem; margin-top: 1rem; justify-content: flex-end; }
+
+/* CONSOLE */
+.console {
+  background: #080a0b;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: .75rem 1rem;
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--accent);
+  display: none;
+  margin-top: .8rem;
+  white-space: pre-wrap;
+}
+.console.visible { display: block; }
+.console.error-out { color: var(--danger); }
+
+@keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+  <div>
+    <div class="admin-title">Gestion des <span>Utilisateurs</span></div>
+    <div class="admin-sub">// {{ users | length }} compte(s) enregistré(s)</div>
+  </div>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">&#8592; Dashboard</a>
+</div>
+
+<div class="users-grid">
+
+  <!-- TABLE -->
+  <div class="section">
+    <div class="section-header">// Comptes</div>
+    <div class="section-body" style="padding:0">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Utilisateur</th>
+            <th>Rôle</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td style="color:var(--muted)">{{ u.id }}</td>
+            <td>
+              {{ u.username }}
+              {% if u.username == session.user %}
+                <span style="font-size:.6rem;color:var(--muted);margin-left:.4rem">(vous)</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="role-badge role-{{ u.role }}">{{ u.role }}</span>
+            </td>
+            <td>
+              <div class="td-actions">
+                <button class="btn btn-ghost" style="font-size:.65rem;padding:.25rem .6rem"
+                  onclick="openRoleModal({{ u.id }}, '{{ u.username }}', '{{ u.role }}')">
+                  Rôle
+                </button>
+                <button class="btn btn-ghost" style="font-size:.65rem;padding:.25rem .6rem"
+                  onclick="openPwdModal({{ u.id }}, '{{ u.username }}')">
+                  MDP
+                </button>
+                {% if u.username != session.user %}
+                <button class="btn btn-danger" style="font-size:.65rem;padding:.25rem .6rem"
+                  onclick="deleteUser({{ u.id }}, '{{ u.username }}')">
+                  Supprimer
+                </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="console" id="tableConsole"></div>
+  </div>
+
+  <!-- CREATION -->
+  <div class="section">
+    <div class="section-header">// Créer un compte</div>
+    <div class="section-body">
+      <div class="form-field">
+        <label>Nom d'utilisateur</label>
+        <input type="text" id="newUsername" placeholder="ex: jdupont" />
+      </div>
+      <div class="form-field">
+        <label>Mot de passe</label>
+        <input type="password" id="newPassword" placeholder="..." />
+      </div>
+      <div class="form-field">
+        <label>Rôle</label>
+        <select id="newRole">
+          <option value="readonly">readonly — consultation</option>
+          <option value="operator">operator — restart / backup</option>
+          <option value="admin">admin — accès complet</option>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="createUser()">Créer</button>
+      </div>
+      <div class="console" id="createConsole"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL ROLE -->
+<div class="modal-overlay" id="roleModal">
+  <div class="modal">
+    <div class="modal-title">// Changer le rôle</div>
+    <div class="form-field">
+      <label>Utilisateur</label>
+      <input type="text" id="roleModalUsername" disabled />
+    </div>
+    <div class="form-field">
+      <label>Nouveau rôle</label>
+      <select id="roleModalSelect">
+        <option value="readonly">readonly</option>
+        <option value="operator">operator</option>
+        <option value="admin">admin</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('roleModal')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveRole()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MDP -->
+<div class="modal-overlay" id="pwdModal">
+  <div class="modal">
+    <div class="modal-title">// Changer le mot de passe</div>
+    <div class="form-field">
+      <label>Utilisateur</label>
+      <input type="text" id="pwdModalUsername" disabled />
+    </div>
+    <div class="form-field">
+      <label>Nouveau mot de passe</label>
+      <input type="password" id="pwdModalInput" placeholder="..." />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('pwdModal')">Annuler</button>
+      <button class="btn btn-primary" onclick="savePassword()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  var currentUserId = null;
+
+  function showConsole(el, text, isError) {
+    isError = isError || false;
+    el.textContent = text;
+    el.className = "console visible" + (isError ? " error-out" : "");
+  }
+
+  async function apiCall(url, method, body) {
+    method = method || "GET";
+    var opts = { method: method, headers: { "Content-Type": "application/json" } };
+    if (body) opts.body = JSON.stringify(body);
+    var res  = await fetch(url, opts);
+    var data = await res.json();
+    return { ok: res.ok, data: data };
+  }
+
+  // ---- Créer ----
+  async function createUser() {
+    var con      = document.getElementById("createConsole");
+    var username = document.getElementById("newUsername").value.trim();
+    var password = document.getElementById("newPassword").value;
+    var role     = document.getElementById("newRole").value;
+    if (!username || !password) { showConsole(con, "Username et mot de passe requis", true); return; }
+    showConsole(con, "// création en cours...");
+    var r = await apiCall("/admin/api/users", "POST", { username: username, password: password, role: role });
+    showConsole(con, r.ok ? ("OK : " + r.data.message) : ("ERREUR : " + r.data.error), !r.ok);
+    if (r.ok) { setTimeout(function() { location.reload(); }, 800); }
+  }
+
+  // ---- Supprimer ----
+  async function deleteUser(id, username) {
+    if (!confirm("Supprimer l'utilisateur \"" + username + "\" ?")) return;
+    var con = document.getElementById("tableConsole");
+    var r   = await apiCall("/admin/api/users/" + id, "DELETE");
+    showConsole(con, r.ok ? ("OK : " + r.data.message) : ("ERREUR : " + r.data.error), !r.ok);
+    if (r.ok) { setTimeout(function() { location.reload(); }, 800); }
+  }
+
+  // ---- Modal rôle ----
+  function openRoleModal(id, username, role) {
+    currentUserId = id;
+    document.getElementById("roleModalUsername").value = username;
+    document.getElementById("roleModalSelect").value   = role;
+    document.getElementById("roleModal").classList.add("open");
+  }
+
+  async function saveRole() {
+    var role = document.getElementById("roleModalSelect").value;
+    var r    = await apiCall("/admin/api/users/" + currentUserId + "/role", "PUT", { role: role });
+    closeModal("roleModal");
+    var con = document.getElementById("tableConsole");
+    showConsole(con, r.ok ? ("OK : " + r.data.message) : ("ERREUR : " + r.data.error), !r.ok);
+    if (r.ok) { setTimeout(function() { location.reload(); }, 800); }
+  }
+
+  // ---- Modal mot de passe ----
+  function openPwdModal(id, username) {
+    currentUserId = id;
+    document.getElementById("pwdModalUsername").value = username;
+    document.getElementById("pwdModalInput").value    = "";
+    document.getElementById("pwdModal").classList.add("open");
+  }
+
+  async function savePassword() {
+    var pwd = document.getElementById("pwdModalInput").value;
+    if (!pwd) { return; }
+    var r = await apiCall("/admin/api/users/" + currentUserId + "/password", "PUT", { password: pwd });
+    closeModal("pwdModal");
+    var con = document.getElementById("tableConsole");
+    showConsole(con, r.ok ? ("OK : " + r.data.message) : ("ERREUR : " + r.data.error), !r.ok);
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove("open");
+  }
+
+  // Fermer modal en cliquant à l'extérieur
+  document.querySelectorAll(".modal-overlay").forEach(function(el) {
+    el.addEventListener("click", function(e) {
+      if (e.target === el) el.classList.remove("open");
+    });
+  });
+</script>
+{% endblock %}

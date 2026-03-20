@@ -1,0 +1,736 @@
+{% extends "base.html" %}
+{% block title %}{{ vendor_name | capitalize }} — Maintenance{% endblock %}
+
+{% block extra_style %}
+.back-link {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--muted);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: 1.8rem;
+  transition: color .2s;
+}
+.back-link:hover { color: var(--accent); }
+
+.maint-header {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin-bottom: 2.5rem;
+}
+.maint-vendor-name {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.maint-vendor-name span { color: var(--accent); }
+.maint-server {
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--muted);
+  margin-top: .2rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-family: var(--mono);
+  font-size: .72rem;
+  padding: .3rem .8rem;
+  border-radius: 2px;
+}
+.status-badge::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+}
+.status-ok    { background: rgba(0,229,160,.08); color: var(--accent); }
+.status-ok::before    { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.status-error { background: rgba(224,82,82,.08);  color: var(--danger); }
+.status-error::before { background: var(--danger); }
+
+/* SECTIONS */
+.sections { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+@media (max-width: 720px) { .sections { grid-template-columns: 1fr; } }
+
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  animation: fadeIn .3s ease both;
+}
+.section:nth-child(1) { animation-delay: .05s; }
+.section:nth-child(2) { animation-delay: .10s; }
+.section-full { grid-column: 1 / -1; animation-delay: .15s; }
+
+.section-header {
+  padding: .75rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--accent);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+.section-body { padding: 1.2rem; }
+
+/* UPLOAD ZONE */
+.drop-zone {
+  border: 1px dashed var(--border);
+  border-radius: 2px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  position: relative;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(0,229,160,.03);
+}
+.drop-zone input[type="file"] {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer;
+  width: 100%; height: 100%;
+}
+.drop-icon { font-size: 1.8rem; margin-bottom: .5rem; color: var(--muted); }
+.drop-label { font-family: var(--mono); font-size: .72rem; color: var(--muted); }
+.drop-label strong { color: var(--text); }
+.drop-filename {
+  display: none;
+  margin-top: .8rem;
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--accent);
+}
+.upload-actions { display: flex; gap: .7rem; margin-top: 1rem; }
+
+/* ACTIONS GRID */
+.actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+.action-btn {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: .9rem 1rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all .2s;
+  text-decoration: none;
+}
+.action-btn:hover { border-color: var(--accent); }
+.action-btn.danger:hover { border-color: var(--danger); }
+.action-btn-label { font-family: var(--mono); font-size: .72rem; color: var(--text); }
+.action-btn.danger .action-btn-label { color: var(--danger); }
+.action-btn-desc { font-family: var(--mono); font-size: .6rem; color: var(--muted); }
+
+/* EDITOR */
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .75rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+}
+.editor-toolbar-left {
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--accent);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+.editor-toolbar-right { display: flex; gap: .6rem; align-items: center; }
+.editor-filename { font-family: var(--mono); font-size: .65rem; color: var(--muted); }
+.editor-wrap {
+  position: relative;
+  display: flex;
+  height: 640px;
+  overflow: hidden;
+}
+.editor-lines {
+  flex-shrink: 0;
+  width: 48px;
+  background: #080a0b;
+  border-right: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: .75rem;
+  line-height: 1.6;
+  color: var(--muted);
+  text-align: right;
+  padding: 1rem .5rem 1rem 0;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  user-select: none;
+  pointer-events: none;
+}
+.editor-textarea {
+  flex: 1;
+  height: 100%;
+  background: #080a0b;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: .75rem;
+  line-height: 1.6;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 1rem;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-y: scroll;
+  tab-size: 4;
+}
+.editor-textarea:focus { box-shadow: inset 0 0 0 1px rgba(0,229,160,.3); }
+.editor-status {
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--muted);
+  padding: .4rem 1.2rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 1.5rem;
+}
+.editor-status span { color: var(--text); }
+.editor-unsaved { color: var(--warn) !important; }
+
+/* BACKUPS TABLE */
+.backups-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: .7rem;
+}
+.backups-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 400;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-size: .6rem;
+  padding: .4rem .6rem;
+  border-bottom: 1px solid var(--border);
+}
+.backups-table td {
+  padding: .5rem .6rem;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.backups-table tr:last-child td { border-bottom: none; }
+.backups-table tr:hover td { background: rgba(255,255,255,.02); }
+.backup-date { color: var(--muted); }
+.no-backups {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+/* VALIDATION */
+.validation-panel {
+  display: none;
+  border-top: 1px solid var(--border);
+  padding: 1rem 1.2rem;
+  font-family: var(--mono);
+  font-size: .72rem;
+  animation: fadeIn .2s ease;
+}
+.validation-panel.visible { display: block; }
+.validation-summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: .8rem;
+  font-size: .75rem;
+}
+.v-ok    { color: var(--accent); }
+.v-error { color: var(--danger); }
+.v-warn  { color: var(--warn); }
+.v-info  { color: var(--muted); }
+.validation-list { display: flex; flex-direction: column; gap: .3rem; }
+.v-item {
+  display: flex;
+  gap: .7rem;
+  padding: .3rem .5rem;
+  border-radius: 2px;
+  align-items: baseline;
+}
+.v-item.error   { background: rgba(224,82,82,.07);   color: var(--danger); }
+.v-item.warning { background: rgba(245,166,35,.07);  color: var(--warn);   }
+.v-item.info    { background: rgba(90,99,112,.1);    color: var(--muted);  }
+.v-lineno {
+  flex-shrink: 0;
+  min-width: 52px;
+  color: var(--muted);
+  font-size: .65rem;
+}
+.v-item.error .v-lineno   { color: var(--danger); }
+.v-item.warning .v-lineno { color: var(--warn); }
+.v-lineno-link {
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+.v-lineno-link:hover { opacity: .75; }
+
+/* OUTPUT CONSOLE */
+.console {
+  background: #080a0b;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 1rem;
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--accent);
+  min-height: 60px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  display: none;
+  margin-top: 1rem;
+}
+.console.visible { display: block; animation: fadeIn .2s ease; }
+.console.error-out { color: var(--danger); }
+{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('dashboard') }}" class="back-link">&#8592; Retour au dashboard</a>
+
+<div class="maint-header">
+  <div>
+    <div class="maint-vendor-name">{{ vendor_name | capitalize }} <span>Maintenance</span></div>
+    <div class="maint-server">{{ config.LICENSE_SERVER }}</div>
+    <div class="maint-server" id="uptimeDisplay" style="margin-top:.25rem;color:var(--muted)">uptime : —</div>
+  </div>
+  {% if status == 'ok' %}
+    <div class="status-badge status-ok" id="serverStatusBadge">ONLINE</div>
+  {% else %}
+    <div class="status-badge status-error" id="serverStatusBadge">OFFLINE</div>
+  {% endif %}
+</div>
+
+<div class="sections">
+
+  <!-- UPLOAD -->
+  <div class="section">
+    <div class="section-header">// Mise a jour du fichier de licences</div>
+    <div class="section-body">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="licFile" accept=".lic" />
+        <div class="drop-icon">&#8679;</div>
+        <div class="drop-label"><strong>Deposer le fichier .lic</strong><br>ou cliquer pour parcourir</div>
+        <div class="drop-filename" id="dropFilename"></div>
+      </div>
+      <div class="upload-actions">
+        <button type="button" class="btn btn-ghost" onclick="doUploadOnly()">Upload seul</button>
+        <button type="button" class="btn btn-primary" onclick="doFullUpdate()">Mise a jour complete</button>
+      </div>
+      <div class="console" id="uploadConsole"></div>
+    </div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="section">
+    <div class="section-header">// Controle du serveur</div>
+    <div class="section-body">
+      <div class="actions-grid">
+        <button class="action-btn" onclick="doBackup()">
+          <span class="action-btn-label">Sauvegarder</span>
+          <span class="action-btn-desc">Backup immediat du .lic actuel</span>
+        </button>
+        <button class="action-btn" onclick="doLmstat()">
+          <span class="action-btn-label">lmstat</span>
+          <span class="action-btn-desc">Statut des features actives</span>
+        </button>
+        <button class="action-btn" onclick="doRestart()">
+          <span class="action-btn-label">Restart</span>
+          <span class="action-btn-desc">Relancer le daemon</span>
+        </button>
+        <button class="action-btn danger" onclick="doLmdown()">
+          <span class="action-btn-label">lmdown</span>
+          <span class="action-btn-desc">Arreter le serveur</span>
+        </button>
+      </div>
+      <div class="console" id="actionConsole"></div>
+    </div>
+  </div>
+
+  <!-- EDITEUR -->
+  <div class="section section-full">
+    <div class="editor-toolbar">
+      <div class="editor-toolbar-left">// Editeur de licence</div>
+      <div class="editor-toolbar-right">
+        <span class="editor-filename">{{ config.LIC_PATH }}</span>
+        <a class="btn btn-ghost" href="/api/{{ vendor_name | lower }}/lic/download">Telecharger</a>
+        <button class="btn btn-ghost" onclick="loadLicFile()">Recharger</button>
+        <button class="btn btn-ghost" onclick="validateLicFile()">Verifier</button>
+        <button class="btn btn-primary" onclick="saveLicFile()">Sauvegarder</button>
+      </div>
+    </div>
+    <div class="editor-wrap">
+      <div class="editor-lines" id="editorLines">1</div>
+      <textarea class="editor-textarea" id="editorArea" spellcheck="false"
+        placeholder="// Chargement du fichier..."></textarea>
+    </div>
+    <div class="editor-status">
+      Lignes : <span id="editorLineCount">--</span>
+      &nbsp;|&nbsp; Caracteres : <span id="editorCharCount">--</span>
+      &nbsp;|&nbsp; <span id="editorDirty" class="editor-unsaved"></span>
+    </div>
+    <div class="validation-panel" id="validationPanel">
+      <div class="validation-summary" id="validationSummary"></div>
+      <div class="validation-list" id="validationList"></div>
+    </div>
+    <div class="console" id="editorConsole"></div>
+  </div>
+
+  <!-- BACKUPS -->
+  <div class="section section-full">
+    <div class="section-header">// Historique des sauvegardes</div>
+    <div class="section-body">
+      {% if backups %}
+      <table class="backups-table">
+        <thead>
+          <tr><th>Fichier</th><th>Date</th><th>Taille</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for b in backups %}
+          <tr>
+            <td>{{ b.name }}</td>
+            <td class="backup-date">{{ b.created_at[:19] | replace('T', ' ') }}</td>
+            <td>{{ (b.size_bytes / 1024) | round(1) }} Ko</td>
+            <td style="display:flex;gap:.4rem">
+              <button class="btn btn-ghost" onclick="doRestore('{{ b.name }}')">Restaurer</button>
+              <a class="btn btn-ghost" href="/api/{{ vendor_name | lower }}/backup/{{ b.name }}/download">Telecharger</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="no-backups">Aucune sauvegarde disponible</div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+  var VENDOR = "{{ vendor_name | lower }}";
+  var API    = "/api/" + VENDOR;
+
+  function showConsole(el, text, isError) {
+    isError = isError || false;
+    el.textContent = text;
+    el.className = "console visible" + (isError ? " error-out" : "");
+  }
+
+  function updateStatusBadge(isUp) {
+    var badge = document.getElementById("serverStatusBadge");
+    if (isUp) {
+      badge.textContent = "ONLINE";
+      badge.className   = "status-badge status-ok";
+    } else {
+      badge.textContent = "OFFLINE";
+      badge.className   = "status-badge status-error";
+      document.getElementById("uptimeDisplay").textContent = "uptime : n/a";
+    }
+  }
+
+  async function refreshStatus() {
+    var r = await apiCall(API + "/uptime");
+    if (r.ok) {
+      var human = r.data.uptime_human;
+      document.getElementById("uptimeDisplay").textContent = human
+        ? ("uptime : " + human)
+        : "uptime : n/a";
+      updateStatusBadge(!!human);
+    }
+  }
+
+  // Rafraîchissement auto toutes les 60s
+  setInterval(refreshStatus, 60000);
+
+  async function apiCall(url, method, body) {
+    method = method || "GET";
+    body   = body   || null;
+    var opts = { method: method, headers: {} };
+    if (body instanceof FormData) {
+      opts.body = body;
+    } else if (body !== null) {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(body);
+    }
+    var res  = await fetch(url, opts);
+    var data = await res.json();
+    return { ok: res.ok, data: data };
+  }
+
+  // ---- Drag & drop ----
+  var dropZone     = document.getElementById("dropZone");
+  var fileInput    = document.getElementById("licFile");
+  var dropFilename = document.getElementById("dropFilename");
+
+  fileInput.addEventListener("change", function() {
+    if (fileInput.files[0]) {
+      dropFilename.textContent = fileInput.files[0].name;
+      dropFilename.style.display = "block";
+    }
+  });
+  dropZone.addEventListener("dragover", function(e) { e.preventDefault(); dropZone.classList.add("drag-over"); });
+  dropZone.addEventListener("dragleave", function() { dropZone.classList.remove("drag-over"); });
+  dropZone.addEventListener("drop", function(e) {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over");
+    if (e.dataTransfer.files[0]) {
+      fileInput.files = e.dataTransfer.files;
+      dropFilename.textContent = e.dataTransfer.files[0].name;
+      dropFilename.style.display = "block";
+    }
+  });
+
+  // ---- Upload ----
+  async function doUploadOnly() {
+    var con = document.getElementById("uploadConsole");
+    if (!fileInput.files[0]) { showConsole(con, "Aucun fichier selectionne", true); return; }
+    showConsole(con, "// upload en cours...");
+    var fd = new FormData();
+    fd.append("file", fileInput.files[0]);
+    var r = await apiCall(API + "/upload", "POST", fd);
+    showConsole(con, r.ok
+      ? ("OK : " + r.data.message + "\n-> " + r.data.vendor_lic + "\n-> backup : " + r.data.backup)
+      : ("ERREUR : " + r.data.error), !r.ok);
+    if (r.ok) { loadLicFile(); location.reload(); }
+  }
+
+  async function doFullUpdate() {
+    var con = document.getElementById("uploadConsole");
+    if (!fileInput.files[0]) { showConsole(con, "Aucun fichier selectionne", true); return; }
+    showConsole(con, "// mise a jour complete en cours...");
+    var fd = new FormData();
+    fd.append("file", fileInput.files[0]);
+    var r = await apiCall(API + "/update", "POST", fd);
+    if (r.ok) {
+      var s = r.data.steps;
+      showConsole(con,
+        "OK : Mise a jour effectuee\n" +
+        "[1] backup  -> " + (s.upload && s.upload.backup     ? s.upload.backup     : "n/a") + "\n" +
+        "[2] upload  -> " + (s.upload && s.upload.vendor_lic ? s.upload.vendor_lic : "n/a") + "\n" +
+        "[3] lmdown  -> code " + (s.lmdown  ? s.lmdown.returncode  : "?") + "\n" +
+        "[4] restart -> code " + (s.restart ? s.restart.returncode : "?") + "\n" +
+        "[5] lmstat  ->\n"     + (s.lmstat  ? s.lmstat.output      : "")
+      );
+      loadLicFile();
+      location.reload();
+    } else {
+      showConsole(con, "ERREUR : " + r.data.error, true);
+    }
+  }
+
+  // ---- Server actions ----
+  async function doBackup() {
+    var con = document.getElementById("actionConsole");
+    showConsole(con, "// sauvegarde en cours...");
+    var r = await apiCall(API + "/backup", "POST");
+    showConsole(con, r.ok ? ("OK : " + r.data.message + "\n-> " + r.data.backup) : ("ERREUR : " + r.data.error), !r.ok);
+    if (r.ok) location.reload();
+  }
+
+  async function doLmstat() {
+    var con = document.getElementById("actionConsole");
+    showConsole(con, "// lmstat en cours...");
+    var r = await apiCall(API + "/lmstat");
+    showConsole(con, r.ok ? (r.data.output || "(aucune sortie)") : ("ERREUR : " + (r.data.stderr || r.data.error)), !r.ok);
+  }
+
+  async function doRestart() {
+    var con = document.getElementById("actionConsole");
+    var MAX_ATTEMPTS = 3;
+    var INTERVAL_MS  = 5000;
+
+    showConsole(con, "// lancement du restart...");
+    var rr = await apiCall(API + "/restart", "POST");
+    if (!rr.ok) { showConsole(con, "ERREUR restart : " + (rr.data.stderr || ""), true); return; }
+
+    for (var attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      for (var t = INTERVAL_MS / 1000; t > 0; t--) {
+        showConsole(con, "Restart lance - verification dans " + t + "s... (tentative " + attempt + "/" + MAX_ATTEMPTS + ")");
+        await new Promise(function(resolve) { setTimeout(resolve, 1000); });
+      }
+      showConsole(con, "Tentative " + attempt + "/" + MAX_ATTEMPTS + " - lmstat en cours...");
+      var rs = await apiCall(API + "/lmstat");
+      var output = (rs.data.output || rs.data.stdout || "");
+      if (rs.ok && rs.data.returncode === 0) {
+        showConsole(con, "OK - Serveur operationnel (tentative " + attempt + "/" + MAX_ATTEMPTS + ")\n\n// lmstat ->\n" + output);
+        updateStatusBadge(true);
+        return;
+      }
+      if (attempt < MAX_ATTEMPTS) {
+        showConsole(con, "Serveur pas encore up (tentative " + attempt + "/" + MAX_ATTEMPTS + ")\n" + (output || rs.data.stderr || "(aucune reponse)") + "\n// nouvelle tentative...");
+      }
+    }
+    showConsole(con, "ERREUR : Le serveur ne repond pas apres " + MAX_ATTEMPTS + " tentatives (" + (MAX_ATTEMPTS * INTERVAL_MS / 1000) + "s)\nVerifiez les logs du daemon.", true);
+  }
+
+  async function doLmdown() {
+    if (!confirm("Arreter le serveur de licences ?")) return;
+    var con = document.getElementById("actionConsole");
+    showConsole(con, "// lmdown en cours...");
+    var r = await apiCall(API + "/lmdown", "POST");
+    showConsole(con, r.ok ? ("OK : Serveur arrete\n" + r.data.stdout) : ("ERREUR : " + r.data.stderr), !r.ok);
+    if (r.ok) updateStatusBadge(false);
+  }
+
+  async function doRestore(filename) {
+    if (!confirm("Restaurer " + filename + " comme licence active ?\nLe fichier actuel sera sauvegarde avant remplacement.")) return;
+    var con = document.getElementById("actionConsole");
+    showConsole(con, "// restauration de " + filename + "...");
+    var r = await apiCall(API + "/backup/" + encodeURIComponent(filename) + "/restore", "POST");
+    if (r.ok) {
+      showConsole(con, "OK : " + r.data.message + "\n-> backup actuel : " + r.data.backup + "\n-> restaure : " + r.data.restored);
+      loadLicFile();
+      location.reload();
+    } else {
+      showConsole(con, "ERREUR : " + r.data.error, true);
+    }
+  }
+
+  // ---- Editeur ----
+  var editorArea    = document.getElementById("editorArea");
+  var editorLines   = document.getElementById("editorLines");
+  var editorDirty   = document.getElementById("editorDirty");
+  var editorLineCnt = document.getElementById("editorLineCount");
+  var editorCharCnt = document.getElementById("editorCharCount");
+  var originalContent = "";
+
+  function updateEditorMeta() {
+    var lines = editorArea.value.split("\n");
+    editorLineCnt.textContent = lines.length;
+    editorCharCnt.textContent = editorArea.value.length;
+    editorLines.innerHTML = lines.map(function(_, i) { return i + 1; }).join("<br>");
+    if (editorArea.value !== originalContent) {
+      editorDirty.textContent = "non sauvegarde";
+      editorDirty.className = "editor-unsaved";
+    } else {
+      editorDirty.textContent = "synchronise";
+      editorDirty.className = "";
+    }
+  }
+
+  editorArea.addEventListener("input", updateEditorMeta);
+  editorArea.addEventListener("scroll", function() { editorLines.scrollTop = editorArea.scrollTop; });
+  editorArea.addEventListener("keydown", function(e) {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      var s = editorArea.selectionStart;
+      editorArea.value = editorArea.value.substring(0, s) + "    " + editorArea.value.substring(editorArea.selectionEnd);
+      editorArea.selectionStart = editorArea.selectionEnd = s + 4;
+      updateEditorMeta();
+    }
+  });
+
+  // ---- Validation ----
+  async function validateLicFile() {
+    var panel   = document.getElementById("validationPanel");
+    var summary = document.getElementById("validationSummary");
+    var list    = document.getElementById("validationList");
+    summary.textContent = "// verification en cours...";
+    summary.className   = "validation-summary v-info";
+    list.innerHTML      = "";
+    panel.classList.add("visible");
+
+    var r = await apiCall(API + "/lic/validate", "POST", { content: editorArea.value });
+    if (!r.ok) {
+      summary.textContent = "Erreur : " + r.data.error;
+      summary.className   = "validation-summary v-error";
+      return;
+    }
+
+    var errCount  = r.data.errors.length;
+    var warnCount = r.data.warnings.length;
+    var infoCount = r.data.infos.length;
+    var dupLines  = r.data.duplicate_lines_to_remove || [];
+
+    if (r.data.valid) {
+      summary.innerHTML = "<span class='v-ok'>Fichier valide</span>" +
+        (warnCount ? " &nbsp;·&nbsp; <span class='v-warn'>" + warnCount + " avertissement(s)</span>" : "") +
+        (infoCount ? " &nbsp;·&nbsp; <span class='v-info'>" + infoCount + " info(s)</span>" : "");
+    } else {
+      summary.innerHTML = "<span class='v-error'>" + errCount + " erreur(s)</span>" +
+        (warnCount ? " &nbsp;·&nbsp; <span class='v-warn'>" + warnCount + " avertissement(s)</span>" : "") +
+        (infoCount ? " &nbsp;·&nbsp; <span class='v-info'>" + infoCount + " info(s)</span>" : "") +
+        (dupLines.length ? " &nbsp;&nbsp;<button class='btn btn-ghost' style='padding:.2rem .7rem;font-size:.68rem' onclick='removeDuplicateLines(" + JSON.stringify(dupLines) + ")'>Supprimer les doublons (" + dupLines.length + " ligne(s))</button>" : "");
+    }
+
+    function makeItem(item, cls) {
+      var lineLabel = item.line > 0
+        ? "<span class='v-lineno v-lineno-link' onclick='goToLine(" + item.line + ")'>ligne " + item.line + "</span>"
+        : "<span class='v-lineno'>global</span>";
+      return "<div class='v-item " + cls + "'>" + lineLabel + "<span>" + item.message + "</span></div>";
+    }
+
+    list.innerHTML =
+      r.data.errors.map(function(i)   { return makeItem(i, "error");   }).join("") +
+      r.data.warnings.map(function(i) { return makeItem(i, "warning"); }).join("") +
+      r.data.infos.map(function(i)    { return makeItem(i, "info");    }).join("");
+  }
+
+  function removeDuplicateLines(linesToRemove) {
+    var lines    = editorArea.value.split("\n");
+    var toRemove = {};
+    linesToRemove.forEach(function(n) { toRemove[n - 1] = true; });
+    editorArea.value = lines.filter(function(_, i) { return !toRemove[i]; }).join("\n");
+    updateEditorMeta();
+    validateLicFile();
+  }
+
+  function goToLine(n) {
+    var lines = editorArea.value.split("\n");
+    var pos   = 0;
+    for (var i = 0; i < n - 1; i++) pos += lines[i].length + 1;
+    editorArea.focus();
+    editorArea.setSelectionRange(pos, pos + (lines[n - 1] || "").length);
+    var lineHeight = parseFloat(getComputedStyle(editorArea).lineHeight);
+    editorArea.scrollTop = (n - 3) * lineHeight;
+  }
+
+  async function loadLicFile() {
+    var con = document.getElementById("editorConsole");
+    var r   = await apiCall(API + "/lic/read");
+    if (r.ok) {
+      editorArea.value = r.data.content;
+      originalContent  = r.data.content;
+      updateEditorMeta();
+      con.className = "console";
+    } else {
+      editorArea.value = "";
+      showConsole(con, "Impossible de charger le fichier : " + r.data.error, true);
+      updateEditorMeta();
+    }
+  }
+
+  async function saveLicFile() {
+    var con = document.getElementById("editorConsole");
+    showConsole(con, "// sauvegarde en cours...");
+    var r = await apiCall(API + "/lic/save", "POST", { content: editorArea.value });
+    if (r.ok) {
+      originalContent = editorArea.value;
+      updateEditorMeta();
+      showConsole(con, "OK : " + r.data.message + "\n-> backup : " + r.data.backup);
+      location.reload();
+    } else {
+      showConsole(con, "ERREUR : " + r.data.error, true);
+    }
+  }
+
+  loadLicFile();
+  refreshStatus();
+</script>
+{% endblock %}

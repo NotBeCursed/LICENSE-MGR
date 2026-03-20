@@ -1,0 +1,75 @@
+# =============================================================================
+# .gitignore — LicenseMGR
+# =============================================================================
+
+# ===== PYTHON =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+
+# ===== ENVIRONNEMENTS VIRTUELS =====
+.venv/
+venv/
+env/
+ENV/
+
+# ===== FLASK / APP =====
+instance/
+.webassets-cache
+
+# ===== BASE DE DONNÉES =====
+*.db
+*.sqlite
+*.sqlite3
+
+# ===== DONNÉES RUNTIME =====
+uptime.json
+
+# ===== FICHIERS DE LICENCES =====
+# Ne jamais versionner les fichiers .lic (données sensibles)
+*.lic
+opt/
+
+# ===== BACKUPS =====
+backups/
+*/backups/
+
+# ===== SSL / CERTIFICATS =====
+ssl/
+*.crt
+*.key
+*.pem
+*.p12
+*.pfx
+
+# ===== LOGS =====
+*.log
+logs/
+
+# ===== ÉDITEURS =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ===== VARIABLES D'ENVIRONNEMENT =====
+.env
+.env.*
+!.env.example

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}LicenseManager{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0c0e0f;
+      --surface:   #13161a;
+      --border:    #1f2428;
+      --accent:    #00e5a0;
+      --accent-dim:#00a36e;
+      --warn:      #f5a623;
+      --danger:    #e05252;
+      --text:      #d4dbe3;
+      --muted:     #5a6370;
+      --mono:      'Share Tech Mono', monospace;
+      --sans:      'Syne', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      /* subtle scanline texture */
+      background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,.08) 2px,
+        rgba(0,0,0,.08) 4px
+      );
+    }
+
+    /* NAV */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      font-size: .75rem;
+      font-family: var(--mono);
+      color: var(--accent);
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    .nav-brand span { color: var(--muted); }
+    .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+    .nav-user {
+      font-family: var(--mono);
+      font-size: .7rem;
+      color: var(--muted);
+    }
+    .nav-user strong { color: var(--text); }
+    .btn-logout {
+      font-family: var(--mono);
+      font-size: .7rem;
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid var(--border);
+      padding: .3rem .8rem;
+      border-radius: 2px;
+      transition: color .2s, border-color .2s;
+    }
+    .btn-logout:hover { color: var(--danger); border-color: var(--danger); }
+
+    /* MAIN */
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem;
+    }
+
+    /* FLASH MESSAGES */
+    .flash {
+      font-family: var(--mono);
+      font-size: .78rem;
+      padding: .75rem 1rem;
+      border-left: 3px solid var(--accent);
+      background: rgba(0,229,160,.06);
+      margin-bottom: 1.5rem;
+      animation: fadeIn .3s ease;
+    }
+    .flash.error { border-color: var(--danger); background: rgba(224,82,82,.07); }
+
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-family: var(--mono);
+      font-size: .75rem;
+      letter-spacing: .05em;
+      padding: .5rem 1.1rem;
+      border-radius: 2px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all .2s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+    .btn-primary:hover { background: var(--accent-dim); border-color: var(--accent-dim); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border-color: var(--danger);
+    }
+    .btn-danger:hover { background: rgba(224,82,82,.1); }
+
+    {% block extra_style %}{% endblock %}
+  </style>
+</head>
+<body>
+
+{% if session.get('user') %}
+<nav>
+  <div class="nav-brand"><span>//</span> LICENSE<span>.</span>MGR</div>
+  <div class="nav-right">
+    <div class="nav-user">
+      connecté en tant que <strong>{{ session.user }}</strong>
+      <span style="color:var(--muted);margin-left:.4rem">[{{ session.get('role','?') }}]</span>
+    </div>
+    {% if session.get('role') == 'admin' %}
+    <a href="{{ url_for('admin_users') }}" class="btn-logout">utilisateurs</a>
+    {% endif %}
+    <a href="{{ url_for('logout') }}" class="btn-logout">déconnexion</a>
+  </div>
+</nav>
+{% endif %}
+
+<main>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="flash {% if cat == 'error' %}error{% endif %}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+</body>
+</html>

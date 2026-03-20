@@ -1,0 +1,22 @@
+# =============================================================================
+# Fichier de configuration des vendors FlexLM
+# Modifier ce fichier pour ajouter, supprimer ou ajuster un vendor.
+#
+# Chaque vendor doit avoir les clés suivantes :
+#   lic_path       : chemin absolu vers le fichier .lic
+#   backup_dir     : répertoire de sauvegarde
+#   lmutil_bin     : chemin vers le binaire lmutil
+#   start_script   : script de démarrage du daemon
+#   license_server : adresse du serveur (port@host)
+#
+# Les valeurs peuvent être surchargées par variables d'environnement :
+#   <VENDOR>_LIC_PATH, <VENDOR>_BACKUP_DIR, etc.
+# =============================================================================
+
+vendor:
+  lic_path:       /opt/vendor/vendor.lic
+  backup_dir:     /opt/vendor/backups
+  lmutil_bin:     /opt/vendor/bin_lm/lmutil
+  start_script:   /opt/vendor/start_licenses_vendor.sh
+  license_server: 12345@license
+  

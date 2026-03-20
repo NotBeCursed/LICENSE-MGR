@@ -1,0 +1,299 @@
+{% block title %}Dashboard — LicenseMGR{% endblock %}
+
+{% block extra_style %}
+.page-header {
+  margin-bottom: 2.5rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.page-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #fff;
+}
+.page-title span { color: var(--accent); }
+.page-sub {
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--muted);
+  margin-top: .3rem;
+}
+.refresh-btn {
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  padding: .4rem .9rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.refresh-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* GRID */
+.vendors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.2rem;
+}
+
+/* CARD */
+.vendor-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn .35s ease both;
+  transition: border-color .2s, transform .2s;
+}
+.vendor-card:hover { border-color: #2a3038; transform: translateY(-2px); }
+{% for i in range(8) %}
+.vendor-card:nth-child({{ i+1 }}) { animation-delay: {{ i * 0.07 }}s; }
+{% endfor %}
+
+.card-accent-bar {
+  height: 3px;
+  background: var(--accent);
+}
+.card-accent-bar.warn  { background: var(--warn); }
+.card-accent-bar.error { background: var(--danger); }
+
+.card-body { padding: 1.2rem 1.3rem; flex: 1; }
+
+.vendor-name {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: .2rem;
+}
+.vendor-server {
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+
+/* STATUS BADGE */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-family: var(--mono);
+  font-size: .7rem;
+  padding: .25rem .7rem;
+  border-radius: 2px;
+  margin-bottom: 1rem;
+}
+.status-badge::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-ok    { background: rgba(0,229,160,.08); color: var(--accent);  }
+.status-ok::before    { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.status-warn  { background: rgba(245,166,35,.08);  color: var(--warn);   }
+.status-warn::before  { background: var(--warn); }
+.status-error { background: rgba(224,82,82,.08);   color: var(--danger); }
+.status-error::before { background: var(--danger); }
+
+/* STATS */
+.card-stats {
+  display: flex;
+  gap: 1.2rem;
+  margin-bottom: 1.1rem;
+}
+.stat { flex: 1; }
+.stat-val {
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  color: #fff;
+  font-weight: 400;
+}
+.stat-lbl {
+  font-family: var(--mono);
+  font-size: .6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+
+/* CARD FOOTER */
+.card-footer {
+  padding: .9rem 1.3rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: .6rem;
+  align-items: center;
+}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Vendor <span>Dashboard</span></div>
+    <div class="page-sub">// {{ vendors | length }} serveurs de licences enregistrés</div>
+  </div>
+  <button class="refresh-btn" onclick="location.reload()">↻ Rafraîchir</button>
+</div>
+
+<div class="vendors-grid">
+  {% for v in vendors %}
+  <div class="vendor-card">
+    <div class="card-accent-bar {% if v.status == 'warn' %}warn{% elif v.status == 'error' %}error{% endif %}"></div>
+    <div class="card-body">
+      <div class="vendor-name">{{ v.name }}</div>
+      <div class="vendor-server">{{ v.license_server }}</div>
+
+      {% if v.status == 'ok' %}
+        <div class="status-badge status-ok">ONLINE</div>
+      {% elif v.status == 'warn' %}
+        <div class="status-badge status-warn">DÉGRADÉ</div>
+      {% else %}
+        <div class="status-badge status-error">OFFLINE</div>
+      {% endif %}
+
+      <div class="card-stats">
+        <div class="stat">
+          <div class="stat-val">{{ v.features }}</div>
+          <div class="stat-lbl">features</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val">{{ v.backups }}</div>
+          <div class="stat-lbl">backups</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val">{{ v.uptime.uptime_human if v.uptime else '—' }}</div>
+          <div class="stat-lbl">uptime</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <a href="{{ url_for('vendor_page', vendor=v.name|lower) }}" class="btn btn-primary">
+        Maintenance →
+      </a>
+      <a href="{{ url_for('route_lmstat', vendor=v.name|lower) }}" target="_blank" class="btn btn-ghost">
+        lmstat
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+[cad@LXC-LICENCE-WEB-TEST templates]$
+[cad@LXC-LICENCE-WEB-TEST templates]$ ls
+admin_users.html  base.html  dashboard.html  login.html  vendor.html
+[cad@LXC-LICENCE-WEB-TEST templates]$ cat login.html
+{% extends "base.html" %}
+{% block title %}Connexion — LicenseMGR{% endblock %}
+
+{% block extra_style %}
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 2.5rem;
+  animation: fadeIn .4s ease;
+}
+.login-header {
+  margin-bottom: 2rem;
+}
+.login-eyebrow {
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--accent);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: .5rem;
+}
+.login-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+}
+.login-title span { color: var(--accent); }
+
+.field { margin-bottom: 1.2rem; }
+.field label {
+  display: block;
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--muted);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: .4rem;
+}
+.field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: .85rem;
+  padding: .6rem .8rem;
+  border-radius: 2px;
+  outline: none;
+  transition: border-color .2s;
+}
+.field input:focus { border-color: var(--accent); }
+
+.login-submit {
+  width: 100%;
+  margin-top: .5rem;
+  padding: .75rem;
+  font-size: .8rem;
+  justify-content: center;
+}
+
+.login-hint {
+  margin-top: 1.5rem;
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--muted);
+  text-align: center;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-eyebrow">// FlexLM Manager</div>
+      <div class="login-title">License<span>MGR</span></div>
+    </div>
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="field">
+        <label>Identifiant</label>
+        <input type="text" name="username" autocomplete="username" autofocus required />
+      </div>
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" name="password" autocomplete="current-password" required />
+      </div>
+      <button type="submit" class="btn btn-primary login-submit">Connexion</button>
+    </form>
+
+    <div class="login-hint">accès restreint — personnel autorisé uniquement</div>
+  </div>
+</div>
+{% endblock %}
