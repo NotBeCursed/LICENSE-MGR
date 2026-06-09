@@ -124,7 +124,7 @@ def _parse_expiring(content: str, vendor_name: str, threshold_days: int) -> list
 def _build_smtp(config: dict) -> smtplib.SMTP:
     host = config.get("smtp_host", "")
     port = int(config.get("smtp_port", 587) or 587)
-    tls  = config.get("smtp_tls", "starttls")
+    tls  = config.get("smtp_tls") or "starttls"   # fallback si vide en DB
     user = config.get("smtp_user", "")
     pwd  = config.get("smtp_password", "")
 
@@ -138,6 +138,11 @@ def _build_smtp(config: dict) -> smtplib.SMTP:
         if tls == "starttls":
             smtp.starttls(context=ssl.create_default_context())
             smtp.ehlo()
+        elif tls == "none":
+            # Serveur exige STARTTLS mais config dit "none" → tente quand même
+            if smtp.has_extn("STARTTLS"):
+                smtp.starttls(context=ssl.create_default_context())
+                smtp.ehlo()
 
     if user and pwd:
         smtp.login(user, pwd)
