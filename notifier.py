@@ -19,6 +19,7 @@ _DEFAULTS = {
     "smtp_user":            "",
     "smtp_password":        "",
     "smtp_tls":             "starttls",
+    "smtp_verify_ssl":      "1",
     "smtp_from":            "",
     "recipients":           "",
     "threshold_days":       "30",
@@ -121,27 +122,35 @@ def _parse_expiring(content: str, vendor_name: str, threshold_days: int) -> list
 
 # ===== EMAIL =====
 
+def _make_ssl_ctx(verify: bool) -> ssl.SSLContext:
+    ctx = ssl.create_default_context()
+    if not verify:
+        ctx.check_hostname = False
+        ctx.verify_mode    = ssl.CERT_NONE
+    return ctx
+
+
 def _build_smtp(config: dict) -> smtplib.SMTP:
-    host = config.get("smtp_host", "")
-    port = int(config.get("smtp_port", 587) or 587)
-    tls  = config.get("smtp_tls") or "starttls"   # fallback si vide en DB
-    user = config.get("smtp_user", "")
-    pwd  = config.get("smtp_password", "")
+    host   = config.get("smtp_host", "")
+    port   = int(config.get("smtp_port", 587) or 587)
+    tls    = config.get("smtp_tls") or "starttls"
+    verify = config.get("smtp_verify_ssl", "1") == "1"
+    user   = config.get("smtp_user", "")
+    pwd    = config.get("smtp_password", "")
+    ctx    = _make_ssl_ctx(verify)
 
     if tls == "ssl":
-        ctx  = ssl.create_default_context()
         smtp = smtplib.SMTP_SSL(host, port, context=ctx)
         smtp.ehlo()
     else:
         smtp = smtplib.SMTP(host, port, timeout=10)
         smtp.ehlo()
         if tls == "starttls":
-            smtp.starttls(context=ssl.create_default_context())
+            smtp.starttls(context=ctx)
             smtp.ehlo()
         elif tls == "none":
-            # Serveur exige STARTTLS mais config dit "none" → tente quand même
             if smtp.has_extn("STARTTLS"):
-                smtp.starttls(context=ssl.create_default_context())
+                smtp.starttls(context=ctx)
                 smtp.ehlo()
 
     if user and pwd:

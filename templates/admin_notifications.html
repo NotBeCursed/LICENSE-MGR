@@ -191,6 +191,16 @@
             <div class="form-hint">Si vide, utilise l'utilisateur SMTP</div>
           </div>
         </div>
+        <div class="form-field" style="display:flex;align-items:center;gap:.7rem;margin-top:.2rem">
+          <input type="checkbox" id="smtp_verify_ssl" style="width:auto;accent-color:var(--accent)"
+            {% if config.smtp_verify_ssl != '0' %}checked{% endif %} />
+          <label for="smtp_verify_ssl" style="margin-bottom:0;text-transform:none;font-size:.72rem;cursor:pointer">
+            Vérifier le certificat SSL
+          </label>
+          <span class="form-hint" style="margin-top:0">(décocher pour certificats auto-signés)</span>
+        </div>
+        <div style="display:none">
+        </div>
       </div>
     </div>
 
@@ -306,6 +316,7 @@
       smtp_port:            document.getElementById("smtp_port").value.trim(),
       smtp_user:            document.getElementById("smtp_user").value.trim(),
       smtp_tls:             document.getElementById("smtp_tls").value,
+      smtp_verify_ssl:      document.getElementById("smtp_verify_ssl").checked ? "1" : "0",
       smtp_from:            document.getElementById("smtp_from").value.trim(),
       recipients:           document.getElementById("recipients").value.trim(),
       threshold_days:       document.getElementById("threshold_days").value.trim(),
