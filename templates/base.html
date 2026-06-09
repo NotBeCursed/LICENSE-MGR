@@ -148,6 +148,7 @@
     </div>
     {% if session.get('role') == 'admin' %}
     <a href="{{ url_for('admin_users') }}" class="btn-logout">utilisateurs</a>
+    <a href="{{ url_for('admin_logs') }}" class="btn-logout">logs</a>
     {% endif %}
     <a href="{{ url_for('logout') }}" class="btn-logout">déconnexion</a>
   </div>

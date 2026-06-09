@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}Logs — LicenseMGR{% endblock %}
+
+{% block extra_style %}
+.admin-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+.admin-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #fff;
+}
+.admin-title span { color: var(--accent); }
+.admin-sub {
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--muted);
+  margin-top: .3rem;
+}
+
+.toolbar {
+  display: flex;
+  gap: .7rem;
+  align-items: center;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+}
+.search-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: .75rem;
+  padding: .45rem .8rem;
+  border-radius: 2px;
+  outline: none;
+  transition: border-color .2s;
+  width: 220px;
+}
+.search-input:focus { border-color: var(--accent); }
+.search-input::placeholder { color: var(--muted); }
+
+.filter-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: .75rem;
+  padding: .45rem .8rem;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+.filter-select:focus { border-color: var(--accent); }
+.filter-select option { background: var(--surface); }
+
+.count-label {
+  font-family: var(--mono);
+  font-size: .68rem;
+  color: var(--muted);
+  margin-left: auto;
+}
+.count-label span { color: var(--text); }
+
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: .7rem;
+}
+.logs-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 400;
+  font-size: .6rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: .5rem .8rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.logs-table td {
+  padding: .45rem .8rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: top;
+}
+.logs-table tr:last-child td { border-bottom: none; }
+.logs-table tr:hover td { background: rgba(255,255,255,.02); }
+.logs-table tbody tr.hidden { display: none; }
+
+.td-ts    { color: var(--muted); white-space: nowrap; }
+.td-user  { color: var(--accent); white-space: nowrap; }
+.td-ip    { color: var(--muted); white-space: nowrap; }
+.td-action { white-space: nowrap; }
+.td-details { color: var(--muted); word-break: break-all; }
+
+.action-badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: .62rem;
+  padding: .1rem .5rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+.ab-login          { background: rgba(0,229,160,.08);  color: var(--accent); }
+.ab-login_failure  { background: rgba(224,82,82,.1);   color: var(--danger); }
+.ab-logout         { background: rgba(90,99,112,.12);  color: var(--muted);  }
+.ab-restart        { background: rgba(245,166,35,.1);  color: var(--warn);   }
+.ab-lmdown         { background: rgba(224,82,82,.1);   color: var(--danger); }
+.ab-lmstat         { background: rgba(90,99,112,.1);   color: var(--muted);  }
+.ab-backup         { background: rgba(0,229,160,.06);  color: var(--accent-dim); }
+.ab-restore        { background: rgba(245,166,35,.08); color: var(--warn);   }
+.ab-upload         { background: rgba(0,229,160,.08);  color: var(--accent); }
+.ab-update         { background: rgba(245,166,35,.1);  color: var(--warn);   }
+.ab-lic_save       { background: rgba(0,229,160,.06);  color: var(--accent-dim); }
+.ab-lic_download   { background: rgba(90,99,112,.1);   color: var(--muted);  }
+.ab-backup_download{ background: rgba(90,99,112,.1);   color: var(--muted);  }
+.ab-user_create    { background: rgba(0,229,160,.08);  color: var(--accent); }
+.ab-user_delete    { background: rgba(224,82,82,.1);   color: var(--danger); }
+.ab-user_role_change    { background: rgba(245,166,35,.08); color: var(--warn); }
+.ab-user_password_change{ background: rgba(90,99,112,.1);   color: var(--muted); }
+
+.no-logs {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 2rem 0;
+}
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+  <div>
+    <div class="admin-title">Journal des <span>Actions</span></div>
+    <div class="admin-sub">// {{ logs | length }} entrée(s) — 1000 dernières</div>
+  </div>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">&#8592; Dashboard</a>
+</div>
+
+<div class="toolbar">
+  <input class="search-input" id="filterUser"   type="text"   placeholder="Filtrer par utilisateur…" oninput="applyFilters()" />
+  <input class="search-input" id="filterDetails" type="text"  placeholder="Filtrer par détails…"     oninput="applyFilters()" />
+  <select class="filter-select" id="filterAction" onchange="applyFilters()">
+    <option value="">Toutes les actions</option>
+    <option value="login">login</option>
+    <option value="login_failure">login_failure</option>
+    <option value="logout">logout</option>
+    <option value="lmstat">lmstat</option>
+    <option value="lmdown">lmdown</option>
+    <option value="restart">restart</option>
+    <option value="backup">backup</option>
+    <option value="restore">restore</option>
+    <option value="upload">upload</option>
+    <option value="update">update</option>
+    <option value="lic_save">lic_save</option>
+    <option value="lic_download">lic_download</option>
+    <option value="backup_download">backup_download</option>
+    <option value="user_create">user_create</option>
+    <option value="user_delete">user_delete</option>
+    <option value="user_role_change">user_role_change</option>
+    <option value="user_password_change">user_password_change</option>
+  </select>
+  <div class="count-label">Affiché : <span id="visibleCount">{{ logs | length }}</span></div>
+</div>
+
+<div class="section">
+  {% if logs %}
+  <table class="logs-table" id="logsTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Date / Heure</th>
+        <th>Utilisateur</th>
+        <th>IP</th>
+        <th>Action</th>
+        <th>Détails</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr data-user="{{ log.username | lower }}"
+          data-action="{{ log.action }}"
+          data-details="{{ (log.details or '') | lower }}">
+        <td style="color:var(--muted)">{{ log.id }}</td>
+        <td class="td-ts">{{ log.timestamp }}</td>
+        <td class="td-user">{{ log.username }}</td>
+        <td class="td-ip">{{ log.ip or '—' }}</td>
+        <td class="td-action">
+          <span class="action-badge ab-{{ log.action }}">{{ log.action }}</span>
+        </td>
+        <td class="td-details">{{ log.details or '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="no-logs">Aucun log enregistré</div>
+  {% endif %}
+</div>
+
+<script>
+  function applyFilters() {
+    var filterUser    = document.getElementById("filterUser").value.toLowerCase().trim();
+    var filterAction  = document.getElementById("filterAction").value;
+    var filterDetails = document.getElementById("filterDetails").value.toLowerCase().trim();
+    var rows    = document.querySelectorAll("#logsTable tbody tr");
+    var visible = 0;
+    rows.forEach(function(row) {
+      var matchUser    = !filterUser    || row.dataset.user.includes(filterUser);
+      var matchAction  = !filterAction  || row.dataset.action === filterAction;
+      var matchDetails = !filterDetails || row.dataset.details.includes(filterDetails);
+      if (matchUser && matchAction && matchDetails) {
+        row.classList.remove("hidden");
+        visible++;
+      } else {
+        row.classList.add("hidden");
+      }
+    });
+    document.getElementById("visibleCount").textContent = visible;
+  }
+</script>
+{% endblock %}

@@ -203,15 +203,17 @@
             </td>
             <td>
               <div class="td-actions">
+                {% if u.username != 'admin' %}
                 <button class="btn btn-ghost" style="font-size:.65rem;padding:.25rem .6rem"
                   onclick="openRoleModal({{ u.id }}, '{{ u.username }}', '{{ u.role }}')">
                   Rôle
                 </button>
+                {% endif %}
                 <button class="btn btn-ghost" style="font-size:.65rem;padding:.25rem .6rem"
                   onclick="openPwdModal({{ u.id }}, '{{ u.username }}')">
                   MDP
                 </button>
-                {% if u.username != session.user %}
+                {% if u.username != session.user and u.username != 'admin' %}
                 <button class="btn btn-danger" style="font-size:.65rem;padding:.25rem .6rem"
                   onclick="deleteUser({{ u.id }}, '{{ u.username }}')">
                   Supprimer

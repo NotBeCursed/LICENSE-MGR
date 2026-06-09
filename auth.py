@@ -101,6 +101,11 @@ def update_user_role(user_id: int, role: str) -> dict:
     if role not in ROLES:
         raise ValueError(f"Rôle invalide : {role}")
     with get_db() as conn:
+        row = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not row:
+            raise ValueError("Utilisateur introuvable")
+        if row["username"] == "admin":
+            raise ValueError("Le rôle du compte admin ne peut pas être modifié")
         conn.execute("UPDATE users SET role = ? WHERE id = ?", (role, user_id))
         conn.commit()
     return {"message": "Rôle mis à jour"}

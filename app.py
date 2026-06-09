@@ -44,12 +44,15 @@ from auth import (
     permission_required,
 )
 
+from logger import init_logs_table, log_action, get_logs
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "changeme-in-production")
 
 # Initialisation de la base utilisateurs au démarrage
 with app.app_context():
     init_db()
+    init_logs_table()
 
 
 # ===== AUTH =====
@@ -63,13 +66,17 @@ def login():
         if user:
             session["user"] = user["username"]
             session["role"] = user["role"]
+            log_action(username, "login")
             return redirect(url_for("dashboard"))
+        log_action(username or "(vide)", "login_failure", "mauvais identifiants")
         flash("Identifiants incorrects.", "error")
     return render_template("login.html")
 
 
 @app.route("/logout")
 def logout():
+    if "user" in session:
+        log_action(session["user"], "logout")
     session.clear()
     return redirect(url_for("login"))
 
@@ -133,7 +140,10 @@ def api_create_user():
     if not data:
         return jsonify({"error": "Données manquantes"}), 400
     try:
-        result = create_user(data.get("username", ""), data.get("password", ""), data.get("role", "readonly"))
+        username = data.get("username", "")
+        role = data.get("role", "readonly")
+        result = create_user(username, data.get("password", ""), role)
+        log_action(session["user"], "user_create", f"user={username}, role={role}")
         return jsonify(result), 201
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -144,6 +154,7 @@ def api_create_user():
 def api_delete_user(user_id):
     try:
         result = delete_user(user_id, session["user"])
+        log_action(session["user"], "user_delete", f"user_id={user_id}")
         return jsonify(result)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -154,7 +165,9 @@ def api_delete_user(user_id):
 def api_update_role(user_id):
     data = request.get_json()
     try:
-        result = update_user_role(user_id, data.get("role", ""))
+        role = data.get("role", "")
+        result = update_user_role(user_id, role)
+        log_action(session["user"], "user_role_change", f"user_id={user_id}, role={role}")
         return jsonify(result)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -166,6 +179,7 @@ def api_update_password(user_id):
     data = request.get_json()
     try:
         result = update_user_password(user_id, data.get("password", ""))
+        log_action(session["user"], "user_password_change", f"user_id={user_id}")
         return jsonify(result)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -209,6 +223,7 @@ def route_backup(vendor):
         return err
     try:
         path = backup(cfg)
+        log_action(session["user"], "backup", f"vendor={vendor}")
         return jsonify({"message": "Sauvegarde effectuée", "backup": path}), 201
     except FileNotFoundError as e:
         return jsonify({"error": str(e)}), 404
@@ -233,7 +248,9 @@ def route_upload(vendor):
         return err
     if "file" not in request.files or not request.files["file"].filename:
         return jsonify({"error": "Aucun fichier fourni (champ : 'file')"}), 400
+    filename = request.files["file"].filename
     result = upload(cfg, request.files["file"].read())
+    log_action(session["user"], "upload", f"vendor={vendor}, file={filename}")
     return jsonify({"message": "Fichier mis à jour", **result}), 200
 
 
@@ -245,6 +262,7 @@ def route_lmdown(vendor):
     if err:
         return err
     result = lmdown(cfg)
+    log_action(session["user"], "lmdown", f"vendor={vendor}, rc={result['returncode']}")
     return jsonify(result), 200 if result["returncode"] == 0 else 500
 
 
@@ -255,6 +273,7 @@ def route_restart(vendor):
     cfg, err = _vendor_or_400(vendor)
     if err:
         return err
+    log_action(session["user"], "restart", f"vendor={vendor}")
     threading.Thread(target=restart, args=(cfg,), daemon=True).start()
     return jsonify({"returncode": 0, "stdout": "Restart lancé en arrière-plan", "stderr": ""}), 200
 
@@ -267,6 +286,7 @@ def route_lmstat(vendor):
     if err:
         return err
     result = lmstat(cfg)
+    log_action(session["user"], "lmstat", f"vendor={vendor}")
     return jsonify(result), 200 if result["returncode"] == 0 else 500
 
 
@@ -297,6 +317,7 @@ def route_lic_save(vendor):
     try:
         backup_path = backup(cfg) if cfg["LIC_PATH"].exists() else None
         cfg["LIC_PATH"].write_text(data["content"], encoding="utf-8")
+        log_action(session["user"], "lic_save", f"vendor={vendor}")
         return jsonify({
             "message": "Fichier sauvegardé",
             "path":    str(cfg["LIC_PATH"]),
@@ -334,6 +355,7 @@ def route_lic_download(vendor):
     lic_path = cfg["LIC_PATH"]
     if not lic_path.exists():
         return jsonify({"error": f"Fichier introuvable : {lic_path}"}), 404
+    log_action(session["user"], "lic_download", f"vendor={vendor}")
     return send_file(lic_path, as_attachment=True, download_name=lic_path.name)
 
 
@@ -352,6 +374,7 @@ def route_backup_restore(vendor, filename):
     try:
         current_backup = backup(cfg) if cfg["LIC_PATH"].exists() else None
         shutil.copy2(backup_path, cfg["LIC_PATH"])
+        log_action(session["user"], "restore", f"vendor={vendor}, file={filename}")
         return jsonify({
             "message":  "Fichier restauré",
             "restored": str(cfg["LIC_PATH"]),
@@ -373,6 +396,7 @@ def route_backup_download(vendor, filename):
         return jsonify({"error": "Accès refusé"}), 403
     if not backup_path.exists():
         return jsonify({"error": "Fichier introuvable"}), 404
+    log_action(session["user"], "backup_download", f"vendor={vendor}, file={filename}")
     return send_file(backup_path, as_attachment=True, download_name=filename)
 
 
@@ -385,11 +409,20 @@ def route_update(vendor):
         return err
     if "file" not in request.files or not request.files["file"].filename:
         return jsonify({"error": "Aucun fichier fourni (champ : 'file')"}), 400
+    filename = request.files["file"].filename
     try:
         steps = update(cfg, request.files["file"].read())
+        log_action(session["user"], "update", f"vendor={vendor}, file={filename}")
         return jsonify({"message": "Mise à jour effectuée", "steps": steps}), 200
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/admin/logs")
+@admin_required
+def admin_logs():
+    logs = get_logs()
+    return render_template("admin_logs.html", logs=logs)
 
 
 if __name__ == "__main__":
