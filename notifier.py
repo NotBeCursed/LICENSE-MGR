@@ -148,10 +148,6 @@ def _build_smtp(config: dict) -> smtplib.SMTP:
         if tls == "starttls":
             smtp.starttls(context=ctx)
             smtp.ehlo()
-        elif tls == "none":
-            if smtp.has_extn("STARTTLS"):
-                smtp.starttls(context=ctx)
-                smtp.ehlo()
 
     if user and pwd:
         smtp.login(user, pwd)
