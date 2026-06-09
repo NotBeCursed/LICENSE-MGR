@@ -131,10 +131,13 @@ def _build_smtp(config: dict) -> smtplib.SMTP:
     if tls == "ssl":
         ctx  = ssl.create_default_context()
         smtp = smtplib.SMTP_SSL(host, port, context=ctx)
+        smtp.ehlo()
     else:
         smtp = smtplib.SMTP(host, port, timeout=10)
+        smtp.ehlo()
         if tls == "starttls":
             smtp.starttls(context=ssl.create_default_context())
+            smtp.ehlo()
 
     if user and pwd:
         smtp.login(user, pwd)
