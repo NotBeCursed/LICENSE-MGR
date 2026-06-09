@@ -3,7 +3,7 @@ import smtplib
 import sqlite3
 import ssl
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -24,7 +24,7 @@ _DEFAULTS = {
     "smtp_from":            "",
     "recipients":           "",
     "threshold_days":       "30",
-    "check_interval_hours": "24",
+    "check_time":           "08:00",
     "last_check_time":      "",
     "last_check_result":    "",
 }
@@ -234,12 +234,24 @@ def check_and_notify() -> str:
 
 # ===== SCHEDULER =====
 
-def _scheduler_loop(interval_hours: float) -> None:
+def _next_trigger(check_time: str) -> float:
+    """Seconds until next daily occurrence of HH:MM."""
     try:
-        check_and_notify()
+        h, m = map(int, check_time.split(":"))
     except Exception:
-        pass
-    while not _stop_event.wait(timeout=interval_hours * 3600):
+        h, m = 8, 0
+    now    = datetime.now()
+    target = now.replace(hour=h, minute=m, second=0, microsecond=0)
+    if target <= now:
+        target += timedelta(days=1)
+    return (target - now).total_seconds()
+
+
+def _scheduler_loop(check_time: str) -> None:
+    while True:
+        wait = _next_trigger(check_time)
+        if _stop_event.wait(timeout=wait):
+            break
         try:
             check_and_notify()
         except Exception:
@@ -251,11 +263,11 @@ def start_scheduler() -> None:
     config = get_config()
     if config.get("enabled") != "1":
         return
-    interval = float(config.get("check_interval_hours", 24) or 24)
+    check_time = config.get("check_time") or "08:00"
     _stop_event.set()
     _stop_event = threading.Event()
     _scheduler_thread = threading.Thread(
-        target=_scheduler_loop, args=(interval,), daemon=True
+        target=_scheduler_loop, args=(check_time,), daemon=True
     )
     _scheduler_thread.start()
 

@@ -287,9 +287,9 @@
             <div class="form-hint">Alerter si expiration &lt; N jours</div>
           </div>
           <div class="form-field">
-            <label>Intervalle de vérification (h)</label>
-            <input type="number" id="check_interval_hours" value="{{ config.check_interval_hours or '24' }}" min="1" max="168" />
-            <div class="form-hint">Fréquence des checks automatiques</div>
+            <label>Heure de vérification quotidienne</label>
+            <input type="time" id="check_time" value="{{ config.check_time or '08:00' }}" />
+            <div class="form-hint">Exécution chaque jour à cette heure</div>
           </div>
         </div>
         <div class="form-field" style="margin-top:.5rem">
@@ -407,8 +407,8 @@
       smtp_need_auth:       document.getElementById("smtp_need_auth").checked ? "1" : "0",
       smtp_from:            document.getElementById("smtp_from").value.trim(),
       recipients:           document.getElementById("recipients").value.trim(),
-      threshold_days:       document.getElementById("threshold_days").value.trim(),
-      check_interval_hours: document.getElementById("check_interval_hours").value.trim(),
+      threshold_days: document.getElementById("threshold_days").value.trim(),
+      check_time:     document.getElementById("check_time").value.trim(),
     };
     if (pwd) payload.smtp_password = pwd;
     showConsole(con, "// sauvegarde en cours...");

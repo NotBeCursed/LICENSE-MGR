@@ -449,7 +449,7 @@ def api_notif_config():
     allowed = {
         "enabled", "smtp_host", "smtp_port", "smtp_user", "smtp_tls",
         "smtp_verify_ssl", "smtp_need_auth", "smtp_from", "recipients",
-        "threshold_days", "check_interval_hours",
+        "threshold_days", "check_time",
     }
     filtered = {k: v for k, v in data.items() if k in allowed}
     # Only update password if provided
