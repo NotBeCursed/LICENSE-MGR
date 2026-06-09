@@ -45,6 +45,12 @@ from auth import (
 )
 
 from logger import init_logs_table, log_action, get_logs
+from notifier import (
+    init_notif_table, get_config as get_notif_config,
+    set_config as set_notif_config,
+    send_email, check_and_notify,
+    start_scheduler, stop_scheduler,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "changeme-in-production")
@@ -53,6 +59,8 @@ app.secret_key = os.environ.get("SECRET_KEY", "changeme-in-production")
 with app.app_context():
     init_db()
     init_logs_table()
+    init_notif_table()
+    start_scheduler()
 
 
 # ===== AUTH =====
@@ -423,6 +431,61 @@ def route_update(vendor):
 def admin_logs():
     logs = get_logs()
     return render_template("admin_logs.html", logs=logs)
+
+
+@app.route("/admin/notifications")
+@admin_required
+def admin_notifications():
+    config = get_notif_config()
+    return render_template("admin_notifications.html", config=config)
+
+
+@app.route("/admin/api/notifications/config", methods=["POST"])
+@admin_required
+def api_notif_config():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Données manquantes"}), 400
+    allowed = {
+        "enabled", "smtp_host", "smtp_port", "smtp_user", "smtp_tls",
+        "smtp_from", "recipients", "threshold_days", "check_interval_hours",
+    }
+    filtered = {k: v for k, v in data.items() if k in allowed}
+    # Only update password if provided
+    if data.get("smtp_password"):
+        filtered["smtp_password"] = data["smtp_password"]
+    set_notif_config(filtered)
+    stop_scheduler()
+    start_scheduler()
+    log_action(session["user"], "notif_config_save")
+    return jsonify({"message": "Configuration sauvegardée"})
+
+
+@app.route("/admin/api/notifications/test", methods=["POST"])
+@admin_required
+def api_notif_test():
+    try:
+        config = get_notif_config()
+        send_email(
+            subject="[LicenseMGR] Email de test",
+            body="Ceci est un email de test envoyé depuis LicenseMGR.\n\nLa configuration SMTP fonctionne correctement.",
+            config=config,
+        )
+        log_action(session["user"], "notif_test_email")
+        return jsonify({"message": f"Email de test envoyé à {config.get('recipients', '')}"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/admin/api/notifications/check", methods=["POST"])
+@admin_required
+def api_notif_check():
+    try:
+        result = check_and_notify()
+        log_action(session["user"], "notif_manual_check", result)
+        return jsonify({"message": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":

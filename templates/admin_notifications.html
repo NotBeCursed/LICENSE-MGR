@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+{% block title %}Notifications — LicenseMGR{% endblock %}
+
+{% block extra_style %}
+.admin-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+.admin-title { font-size: 1.8rem; font-weight: 800; color: #fff; }
+.admin-title span { color: var(--accent); }
+.admin-sub { font-family: var(--mono); font-size: .7rem; color: var(--muted); margin-top: .3rem; }
+
+.notif-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 1.2rem;
+  align-items: start;
+}
+@media (max-width: 820px) { .notif-grid { grid-template-columns: 1fr; } }
+
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  animation: fadeIn .3s ease both;
+}
+.section-header {
+  padding: .75rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--accent);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+.section-body { padding: 1.2rem; }
+
+.form-field { margin-bottom: 1rem; }
+.form-field:last-child { margin-bottom: 0; }
+.form-field label {
+  display: block;
+  font-family: var(--mono);
+  font-size: .62rem;
+  color: var(--muted);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: .35rem;
+}
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: .78rem;
+  padding: .5rem .7rem;
+  border-radius: 2px;
+  outline: none;
+  transition: border-color .2s;
+}
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus { border-color: var(--accent); }
+.form-field select option { background: var(--surface); }
+.form-field textarea { resize: vertical; min-height: 60px; }
+.form-hint { font-family: var(--mono); font-size: .6rem; color: var(--muted); margin-top: .3rem; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .8rem 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+.toggle-label { font-family: var(--mono); font-size: .8rem; color: var(--text); }
+.toggle-sub   { font-family: var(--mono); font-size: .62rem; color: var(--muted); margin-top: .15rem; }
+
+.toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute; inset: 0;
+  background: var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background .2s;
+}
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--muted);
+  top: 3px; left: 3px;
+  transition: transform .2s, background .2s;
+}
+.toggle-switch input:checked + .toggle-track { background: rgba(0,229,160,.25); }
+.toggle-switch input:checked + .toggle-track::after { transform: translateX(20px); background: var(--accent); }
+
+.status-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: .8rem 1rem;
+  font-family: var(--mono);
+  font-size: .7rem;
+  margin-bottom: 1rem;
+}
+.status-box .ts  { color: var(--muted); font-size: .62rem; margin-bottom: .3rem; }
+.status-box .res { color: var(--text); word-break: break-word; }
+.status-box .res.ok  { color: var(--accent); }
+.status-box .res.err { color: var(--danger); }
+
+.actions-col { display: flex; flex-direction: column; gap: .6rem; }
+
+.console {
+  background: #080a0b;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: .75rem 1rem;
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--accent);
+  display: none;
+  margin-top: .8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.console.visible { display: block; animation: fadeIn .2s ease; }
+.console.error-out { color: var(--danger); }
+
+@keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+  <div>
+    <div class="admin-title">Alertes d'<span>Expiration</span></div>
+    <div class="admin-sub">// Notification email automatique des licences expirant bientôt</div>
+  </div>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">&#8592; Dashboard</a>
+</div>
+
+<div class="notif-grid">
+
+  <!-- CONFIG -->
+  <div>
+    <div class="section" style="margin-bottom:1.2rem">
+      <div class="section-header">// Paramètres SMTP</div>
+      <div class="section-body">
+        <div class="form-row">
+          <div class="form-field">
+            <label>Serveur SMTP</label>
+            <input type="text" id="smtp_host" placeholder="smtp.example.com" value="{{ config.smtp_host }}" />
+          </div>
+          <div class="form-field">
+            <label>Port</label>
+            <input type="number" id="smtp_port" value="{{ config.smtp_port or '587' }}" min="1" max="65535" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Utilisateur SMTP</label>
+            <input type="text" id="smtp_user" placeholder="user@example.com" value="{{ config.smtp_user }}" />
+          </div>
+          <div class="form-field">
+            <label>Mot de passe</label>
+            <input type="password" id="smtp_password" placeholder="(inchangé si vide)" />
+            <div class="form-hint">Laisser vide pour conserver l'actuel</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Chiffrement</label>
+            <select id="smtp_tls">
+              <option value="starttls" {% if config.smtp_tls == 'starttls' %}selected{% endif %}>STARTTLS (587)</option>
+              <option value="ssl"      {% if config.smtp_tls == 'ssl'      %}selected{% endif %}>SSL/TLS (465)</option>
+              <option value="none"     {% if config.smtp_tls == 'none'     %}selected{% endif %}>Aucun (25)</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Adresse expéditeur</label>
+            <input type="email" id="smtp_from" placeholder="licmgr@example.com" value="{{ config.smtp_from }}" />
+            <div class="form-hint">Si vide, utilise l'utilisateur SMTP</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">// Paramètres de notification</div>
+      <div class="section-body">
+        <div class="form-field">
+          <label>Destinataires</label>
+          <input type="text" id="recipients" placeholder="alice@example.com, bob@example.com" value="{{ config.recipients }}" />
+          <div class="form-hint">Séparer plusieurs adresses par des virgules</div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Seuil d'alerte (jours)</label>
+            <input type="number" id="threshold_days" value="{{ config.threshold_days or '30' }}" min="1" max="365" />
+            <div class="form-hint">Alerter si expiration &lt; N jours</div>
+          </div>
+          <div class="form-field">
+            <label>Intervalle de vérification (h)</label>
+            <input type="number" id="check_interval_hours" value="{{ config.check_interval_hours or '24' }}" min="1" max="168" />
+            <div class="form-hint">Fréquence des checks automatiques</div>
+          </div>
+        </div>
+        <div class="form-field" style="margin-top:.5rem">
+          <button class="btn btn-primary" onclick="saveConfig()" style="width:100%">Sauvegarder la configuration</button>
+        </div>
+        <div class="console" id="configConsole"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL DROIT -->
+  <div>
+
+    <!-- TOGGLE -->
+    <div class="section" style="margin-bottom:1.2rem">
+      <div class="section-header">// Activation</div>
+      <div class="section-body">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Notifications automatiques</div>
+            <div class="toggle-sub">Vérification périodique + envoi email</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="enabledToggle" {% if config.enabled == '1' %}checked{% endif %} onchange="saveConfig()" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="form-hint" style="margin-top:.2rem">
+          Le scheduler redémarre automatiquement à la sauvegarde.
+        </div>
+      </div>
+    </div>
+
+    <!-- DERNIER CHECK -->
+    <div class="section" style="margin-bottom:1.2rem">
+      <div class="section-header">// Dernier contrôle</div>
+      <div class="section-body">
+        {% if config.last_check_time %}
+        <div class="status-box">
+          <div class="ts">{{ config.last_check_time }}</div>
+          <div class="res {% if 'ERREUR' in config.last_check_result %}err{% else %}ok{% endif %}">
+            {{ config.last_check_result }}
+          </div>
+        </div>
+        {% else %}
+        <div class="status-box">
+          <div class="res" style="color:var(--muted)">Aucun contrôle effectué</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="section">
+      <div class="section-header">// Actions</div>
+      <div class="section-body">
+        <div class="actions-col">
+          <button class="btn btn-ghost" onclick="runCheck()" style="justify-content:center">
+            &#9654; Vérifier maintenant
+          </button>
+          <button class="btn btn-ghost" onclick="sendTest()" style="justify-content:center">
+            &#9993; Envoyer un email de test
+          </button>
+        </div>
+        <div class="console" id="actionConsole"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function showConsole(el, text, isError) {
+    el.textContent = text;
+    el.className = "console visible" + (isError ? " error-out" : "");
+  }
+
+  async function apiCall(url, method, body) {
+    var opts = { method: method || "POST", headers: { "Content-Type": "application/json" } };
+    if (body) opts.body = JSON.stringify(body);
+    var res  = await fetch(url, opts);
+    var data = await res.json();
+    return { ok: res.ok, data: data };
+  }
+
+  async function saveConfig() {
+    var con = document.getElementById("configConsole");
+    var pwd = document.getElementById("smtp_password").value;
+    var payload = {
+      enabled:              document.getElementById("enabledToggle").checked ? "1" : "0",
+      smtp_host:            document.getElementById("smtp_host").value.trim(),
+      smtp_port:            document.getElementById("smtp_port").value.trim(),
+      smtp_user:            document.getElementById("smtp_user").value.trim(),
+      smtp_tls:             document.getElementById("smtp_tls").value,
+      smtp_from:            document.getElementById("smtp_from").value.trim(),
+      recipients:           document.getElementById("recipients").value.trim(),
+      threshold_days:       document.getElementById("threshold_days").value.trim(),
+      check_interval_hours: document.getElementById("check_interval_hours").value.trim(),
+    };
+    if (pwd) payload.smtp_password = pwd;
+    showConsole(con, "// sauvegarde en cours...");
+    var r = await apiCall("/admin/api/notifications/config", "POST", payload);
+    showConsole(con, r.ok ? ("OK : " + r.data.message) : ("ERREUR : " + r.data.error), !r.ok);
+    if (r.ok) document.getElementById("smtp_password").value = "";
+  }
+
+  async function runCheck() {
+    var con = document.getElementById("actionConsole");
+    showConsole(con, "// vérification en cours...");
+    var r = await apiCall("/admin/api/notifications/check", "POST");
+    showConsole(con, r.ok ? r.data.message : ("ERREUR : " + r.data.error), !r.ok);
+    if (r.ok) setTimeout(function() { location.reload(); }, 1200);
+  }
+
+  async function sendTest() {
+    var con = document.getElementById("actionConsole");
+    showConsole(con, "// envoi du mail de test...");
+    var r = await apiCall("/admin/api/notifications/test", "POST");
+    showConsole(con, r.ok ? ("OK : " + r.data.message) : ("ERREUR : " + r.data.error), !r.ok);
+  }
+</script>
+{% endblock %}
