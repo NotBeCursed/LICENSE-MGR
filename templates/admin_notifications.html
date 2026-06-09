@@ -180,9 +180,9 @@
           <div class="form-field">
             <label>Chiffrement</label>
             <select id="smtp_tls">
-              <option value="starttls" {% if config.smtp_tls == 'starttls' %}selected{% endif %}>STARTTLS (587)</option>
-              <option value="ssl"      {% if config.smtp_tls == 'ssl'      %}selected{% endif %}>SSL/TLS (465)</option>
-              <option value="none"     {% if config.smtp_tls == 'none'     %}selected{% endif %}>Aucun (25)</option>
+              <option value="starttls" {% if config.smtp_tls == 'starttls' %}selected{% endif %}>STARTTLS (port 587 ou 25)</option>
+              <option value="ssl"      {% if config.smtp_tls == 'ssl'      %}selected{% endif %}>SSL/TLS (port 465)</option>
+              <option value="none"     {% if config.smtp_tls == 'none'     %}selected{% endif %}>Aucun chiffrement</option>
             </select>
           </div>
           <div class="form-field">
