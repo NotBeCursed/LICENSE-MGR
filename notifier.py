@@ -15,11 +15,12 @@ _scheduler_thread = None
 _DEFAULTS = {
     "enabled":              "0",
     "smtp_host":            "",
-    "smtp_port":            "587",
+    "smtp_port":            "25",
     "smtp_user":            "",
     "smtp_password":        "",
-    "smtp_tls":             "starttls",
+    "smtp_tls":             "none",
     "smtp_verify_ssl":      "1",
+    "smtp_need_auth":       "0",
     "smtp_from":            "",
     "recipients":           "",
     "threshold_days":       "30",
@@ -131,12 +132,13 @@ def _make_ssl_ctx(verify: bool) -> ssl.SSLContext:
 
 
 def _build_smtp(config: dict) -> smtplib.SMTP:
-    host   = config.get("smtp_host", "")
-    port   = int(config.get("smtp_port", 587) or 587)
-    tls    = config.get("smtp_tls") or "starttls"
-    verify = config.get("smtp_verify_ssl", "1") == "1"
-    user   = config.get("smtp_user", "")
-    pwd    = config.get("smtp_password", "")
+    host      = config.get("smtp_host", "")
+    port      = int(config.get("smtp_port", 25) or 25)
+    tls       = config.get("smtp_tls") or "none"
+    verify    = config.get("smtp_verify_ssl", "1") == "1"
+    need_auth = config.get("smtp_need_auth", "0") == "1"
+    user      = config.get("smtp_user", "") if need_auth else ""
+    pwd       = config.get("smtp_password", "") if need_auth else ""
     ctx    = _make_ssl_ctx(verify)
 
     if tls == "ssl":

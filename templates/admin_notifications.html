@@ -72,6 +72,52 @@
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
 
+/* Radio security type */
+.security-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: .5rem 0;
+}
+.radio-opt {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  font-family: var(--mono);
+  font-size: .75rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.radio-opt input[type="radio"] {
+  accent-color: var(--accent);
+  width: 14px; height: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.auth-row {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin: .6rem 0;
+}
+.auth-row input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px; height: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.auth-row label {
+  font-family: var(--mono);
+  font-size: .75rem;
+  color: var(--text);
+  cursor: pointer;
+  margin: 0;
+}
+.field-disabled input {
+  opacity: .35;
+  pointer-events: none;
+}
+
 .toggle-row {
   display: flex;
   align-items: center;
@@ -155,52 +201,74 @@
     <div class="section" style="margin-bottom:1.2rem">
       <div class="section-header">// Paramètres SMTP</div>
       <div class="section-body">
-        <div class="form-row">
-          <div class="form-field">
-            <label>Serveur SMTP</label>
-            <input type="text" id="smtp_host" placeholder="smtp.example.com" value="{{ config.smtp_host }}" />
+
+        <div class="form-field">
+          <label>Serveur SMTP</label>
+          <input type="text" id="smtp_host" placeholder="192.168.1.10" value="{{ config.smtp_host }}" />
+        </div>
+
+        <div class="form-field">
+          <label>Security Type</label>
+          <div class="security-row">
+            <label class="radio-opt">
+              <input type="radio" name="smtp_tls" value="none"
+                {% if config.smtp_tls in ('none', '') or not config.smtp_tls %}checked{% endif %}
+                onchange="onSecurityChange(this)" />
+              None
+            </label>
+            <label class="radio-opt">
+              <input type="radio" name="smtp_tls" value="ssl"
+                {% if config.smtp_tls == 'ssl' %}checked{% endif %}
+                onchange="onSecurityChange(this)" />
+              SSL
+            </label>
+            <label class="radio-opt">
+              <input type="radio" name="smtp_tls" value="starttls"
+                {% if config.smtp_tls == 'starttls' %}checked{% endif %}
+                onchange="onSecurityChange(this)" />
+              TLS
+            </label>
           </div>
+        </div>
+
+        <div class="form-row">
           <div class="form-field">
             <label>Port</label>
-            <input type="number" id="smtp_port" value="{{ config.smtp_port or '587' }}" min="1" max="65535" />
+            <input type="number" id="smtp_port" value="{{ config.smtp_port or '25' }}" min="1" max="65535" />
+          </div>
+          <div class="form-field">
+            <label>Send from</label>
+            <input type="email" id="smtp_from" placeholder="licmgr@domain.com" value="{{ config.smtp_from }}" />
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-field">
-            <label>Utilisateur SMTP</label>
-            <input type="text" id="smtp_user" placeholder="user@example.com" value="{{ config.smtp_user }}" />
-          </div>
-          <div class="form-field">
-            <label>Mot de passe</label>
-            <input type="password" id="smtp_password" placeholder="(inchangé si vide)" />
-            <div class="form-hint">Laisser vide pour conserver l'actuel</div>
-          </div>
+
+        <div class="form-field">
+          <label>User name</label>
+          <input type="text" id="smtp_user" placeholder="user@domain.com" value="{{ config.smtp_user }}"
+            {% if config.smtp_need_auth != '1' %}disabled style="opacity:.35"{% endif %} />
         </div>
-        <div class="form-row">
-          <div class="form-field">
-            <label>Chiffrement</label>
-            <select id="smtp_tls">
-              <option value="starttls" {% if config.smtp_tls == 'starttls' %}selected{% endif %}>STARTTLS (port 587 ou 25)</option>
-              <option value="ssl"      {% if config.smtp_tls == 'ssl'      %}selected{% endif %}>SSL/TLS (port 465)</option>
-              <option value="none"     {% if config.smtp_tls == 'none'     %}selected{% endif %}>Aucun chiffrement</option>
-            </select>
-          </div>
-          <div class="form-field">
-            <label>Adresse expéditeur</label>
-            <input type="email" id="smtp_from" placeholder="licmgr@example.com" value="{{ config.smtp_from }}" />
-            <div class="form-hint">Si vide, utilise l'utilisateur SMTP</div>
-          </div>
+
+        <div class="auth-row">
+          <input type="checkbox" id="smtp_need_auth"
+            {% if config.smtp_need_auth == '1' %}checked{% endif %}
+            onchange="onNeedAuthChange()" />
+          <label for="smtp_need_auth">Need Auth</label>
         </div>
-        <div class="form-field" style="display:flex;align-items:center;gap:.7rem;margin-top:.2rem">
-          <input type="checkbox" id="smtp_verify_ssl" style="width:auto;accent-color:var(--accent)"
+
+        <div class="form-field" id="pwdField" {% if config.smtp_need_auth != '1' %}style="opacity:.35"{% endif %}>
+          <label>Password</label>
+          <input type="password" id="smtp_password" placeholder="(inchangé si vide)"
+            {% if config.smtp_need_auth != '1' %}disabled{% endif %} />
+          <div class="form-hint">Laisser vide pour conserver l'actuel</div>
+        </div>
+
+        <div class="auth-row" style="margin-top:.8rem">
+          <input type="checkbox" id="smtp_verify_ssl"
             {% if config.smtp_verify_ssl != '0' %}checked{% endif %} />
-          <label for="smtp_verify_ssl" style="margin-bottom:0;text-transform:none;font-size:.72rem;cursor:pointer">
-            Vérifier le certificat SSL
-          </label>
-          <span class="form-hint" style="margin-top:0">(décocher pour certificats auto-signés)</span>
+          <label for="smtp_verify_ssl">Vérifier le certificat SSL</label>
+          <span class="form-hint" style="margin:0 0 0 .3rem">(décocher si certificat auto-signé)</span>
         </div>
-        <div style="display:none">
-        </div>
+
       </div>
     </div>
 
@@ -294,6 +362,24 @@
 </div>
 
 <script>
+  var PORT_MAP = { none: "25", ssl: "465", starttls: "587" };
+
+  function onSecurityChange(radio) {
+    var port = document.getElementById("smtp_port");
+    port.value = PORT_MAP[radio.value] || "25";
+  }
+
+  function onNeedAuthChange() {
+    var checked  = document.getElementById("smtp_need_auth").checked;
+    var userEl   = document.getElementById("smtp_user");
+    var pwdEl    = document.getElementById("smtp_password");
+    var pwdField = document.getElementById("pwdField");
+    userEl.disabled   = !checked;
+    userEl.style.opacity = checked ? "" : ".35";
+    pwdEl.disabled    = !checked;
+    pwdField.style.opacity = checked ? "" : ".35";
+  }
+
   function showConsole(el, text, isError) {
     el.textContent = text;
     el.className = "console visible" + (isError ? " error-out" : "");
@@ -308,15 +394,17 @@
   }
 
   async function saveConfig() {
-    var con = document.getElementById("configConsole");
-    var pwd = document.getElementById("smtp_password").value;
-    var payload = {
+    var con      = document.getElementById("configConsole");
+    var pwd      = document.getElementById("smtp_password").value;
+    var tlsRadio = document.querySelector('input[name="smtp_tls"]:checked');
+    var payload  = {
       enabled:              document.getElementById("enabledToggle").checked ? "1" : "0",
       smtp_host:            document.getElementById("smtp_host").value.trim(),
       smtp_port:            document.getElementById("smtp_port").value.trim(),
       smtp_user:            document.getElementById("smtp_user").value.trim(),
-      smtp_tls:             document.getElementById("smtp_tls").value,
+      smtp_tls:             tlsRadio ? tlsRadio.value : "none",
       smtp_verify_ssl:      document.getElementById("smtp_verify_ssl").checked ? "1" : "0",
+      smtp_need_auth:       document.getElementById("smtp_need_auth").checked ? "1" : "0",
       smtp_from:            document.getElementById("smtp_from").value.trim(),
       recipients:           document.getElementById("recipients").value.trim(),
       threshold_days:       document.getElementById("threshold_days").value.trim(),
