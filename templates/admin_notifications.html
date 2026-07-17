@@ -276,9 +276,19 @@
       <div class="section-header">// Paramètres de notification</div>
       <div class="section-body">
         <div class="form-field">
-          <label>Destinataires</label>
+          <label>Destinataires (à)</label>
           <input type="text" id="recipients" placeholder="alice@example.com, bob@example.com" value="{{ config.recipients }}" />
           <div class="form-hint">Séparer plusieurs adresses par des virgules</div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Copie (Cc)</label>
+            <input type="text" id="recipients_cc" placeholder="chef@example.com" value="{{ config.recipients_cc }}" />
+          </div>
+          <div class="form-field">
+            <label>Copie cachée (Cci)</label>
+            <input type="text" id="recipients_bcc" placeholder="archive@example.com" value="{{ config.recipients_bcc }}" />
+          </div>
         </div>
         <div class="form-row">
           <div class="form-field">
@@ -296,6 +306,28 @@
           <button class="btn btn-primary" onclick="saveConfig()" style="width:100%">Sauvegarder la configuration</button>
         </div>
         <div class="console" id="configConsole"></div>
+      </div>
+    </div>
+
+    <div class="section" style="margin-top:1.2rem">
+      <div class="section-header">// Personnalisation du mail</div>
+      <div class="section-body">
+        <div class="form-field">
+          <label>Sujet</label>
+          <input type="text" id="subject_template" placeholder="[LicenseMGR] {{ '{{' }}nb_expire{{ '}}' }} expirée(s), {{ '{{' }}nb_bientot{{ '}}' }} expire(nt) bientôt" value="{{ config.subject_template }}" />
+        </div>
+        <div class="form-field">
+          <label>Corps du message</label>
+          <textarea id="body_template" rows="8" placeholder="Généré le : {{ '{{' }}date{{ '}}' }}&#10;Seuil configuré : {{ '{{' }}seuil{{ '}}' }} jour(s)&#10;&#10;{{ '{{' }}liste{{ '}}' }}">{{ config.body_template }}</textarea>
+          <div class="form-hint">
+            Vide = modèle par défaut. Jetons disponibles :
+            <code>{{ '{{' }}date{{ '}}' }}</code>,
+            <code>{{ '{{' }}seuil{{ '}}' }}</code>,
+            <code>{{ '{{' }}liste{{ '}}' }}</code>,
+            <code>{{ '{{' }}nb_expire{{ '}}' }}</code>,
+            <code>{{ '{{' }}nb_bientot{{ '}}' }}</code>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -407,6 +439,10 @@
       smtp_need_auth:       document.getElementById("smtp_need_auth").checked ? "1" : "0",
       smtp_from:            document.getElementById("smtp_from").value.trim(),
       recipients:           document.getElementById("recipients").value.trim(),
+      recipients_cc:        document.getElementById("recipients_cc").value.trim(),
+      recipients_bcc:       document.getElementById("recipients_bcc").value.trim(),
+      subject_template:     document.getElementById("subject_template").value.trim(),
+      body_template:        document.getElementById("body_template").value,
       threshold_days: document.getElementById("threshold_days").value.trim(),
       check_time:     document.getElementById("check_time").value.trim(),
     };

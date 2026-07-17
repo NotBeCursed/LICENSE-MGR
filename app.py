@@ -448,7 +448,9 @@ def api_notif_config():
         return jsonify({"error": "Données manquantes"}), 400
     allowed = {
         "enabled", "smtp_host", "smtp_port", "smtp_user", "smtp_tls",
-        "smtp_verify_ssl", "smtp_need_auth", "smtp_from", "recipients",
+        "smtp_verify_ssl", "smtp_need_auth", "smtp_from",
+        "recipients", "recipients_cc", "recipients_bcc",
+        "subject_template", "body_template",
         "threshold_days", "check_time",
     }
     filtered = {k: v for k, v in data.items() if k in allowed}

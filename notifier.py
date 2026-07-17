@@ -23,11 +23,32 @@ _DEFAULTS = {
     "smtp_need_auth":       "0",
     "smtp_from":            "",
     "recipients":           "",
+    "recipients_cc":        "",
+    "recipients_bcc":       "",
+    "subject_template":     "",
+    "body_template":        "",
     "threshold_days":       "30",
     "check_time":           "08:00",
     "last_check_time":      "",
     "last_check_result":    "",
 }
+
+DEFAULT_SUBJECT_TEMPLATE = "[LicenseMGR] {{nb_expire}} expirée(s), {{nb_bientot}} expire(nt) bientôt"
+DEFAULT_BODY_TEMPLATE = (
+    "LicenseMGR — Rapport d'expiration\n"
+    "Généré le : {{date}}\n"
+    "Seuil configuré : {{seuil}} jour(s)\n\n"
+    "Licences nécessitant une attention :\n\n"
+    "{{liste}}\n\n"
+    "Connectez-vous à l'interface pour mettre à jour les fichiers de licence."
+)
+
+
+def _render_template(template: str, tokens: dict) -> str:
+    out = template
+    for key, val in tokens.items():
+        out = out.replace(key, val)
+    return out
 
 
 # ===== DB =====
@@ -156,10 +177,16 @@ def _build_smtp(config: dict) -> smtplib.SMTP:
     return smtp
 
 
+def _split_addrs(s: str) -> list:
+    return [r.strip() for r in (s or "").split(",") if r.strip()]
+
+
 def send_email(subject: str, body: str, config: dict) -> None:
-    from_addr  = config.get("smtp_from") or config.get("smtp_user", "")
-    recipients = [r.strip() for r in config.get("recipients", "").split(",") if r.strip()]
-    if not recipients:
+    from_addr = config.get("smtp_from") or config.get("smtp_user", "")
+    to_addrs  = _split_addrs(config.get("recipients", ""))
+    cc_addrs  = _split_addrs(config.get("recipients_cc", ""))
+    bcc_addrs = _split_addrs(config.get("recipients_bcc", ""))
+    if not (to_addrs or cc_addrs or bcc_addrs):
         raise ValueError("Aucun destinataire configuré")
     if not config.get("smtp_host"):
         raise ValueError("Serveur SMTP non configuré")
@@ -167,7 +194,12 @@ def send_email(subject: str, body: str, config: dict) -> None:
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"]    = from_addr
-    msg["To"]      = ", ".join(recipients)
+    if to_addrs:
+        msg["To"] = ", ".join(to_addrs)
+    if cc_addrs:
+        msg["Cc"] = ", ".join(cc_addrs)
+    if bcc_addrs:
+        msg["Bcc"] = ", ".join(bcc_addrs)
     msg.set_content(body)
 
     with _build_smtp(config) as smtp:
@@ -200,29 +232,25 @@ def check_and_notify() -> str:
             else:
                 lines.append(f"  [J-{item['days_left']:>3}]    [{item['vendor'].upper()}] {item['feature']} — expire le {item['exp_date']}")
 
-        body = (
-            f"LicenseMGR — Rapport d'expiration\n"
-            f"Généré le : {ts}\n"
-            f"Seuil configuré : {threshold} jour(s)\n\n"
-            f"Licences nécessitant une attention :\n\n"
-            + "\n".join(lines)
-            + "\n\nConnectez-vous à l'interface pour mettre à jour les fichiers de licence."
-        )
         expired_count  = sum(1 for i in expiring if i["status"] == "expired")
         expiring_count = sum(1 for i in expiring if i["status"] == "expiring")
-        subject_parts  = []
-        if expired_count:
-            subject_parts.append(f"{expired_count} expirée(s)")
-        if expiring_count:
-            subject_parts.append(f"{expiring_count} expire bientôt")
 
+        tokens = {
+            "{{date}}":      ts,
+            "{{seuil}}":     str(threshold),
+            "{{liste}}":     "\n".join(lines),
+            "{{nb_expire}}": str(expired_count),
+            "{{nb_bientot}}": str(expiring_count),
+        }
+        subject_tmpl = config.get("subject_template") or DEFAULT_SUBJECT_TEMPLATE
+        body_tmpl    = config.get("body_template") or DEFAULT_BODY_TEMPLATE
+        subject      = _render_template(subject_tmpl, tokens)
+        body         = _render_template(body_tmpl, tokens)
+
+        dests = ", ".join(filter(None, [config.get("recipients", ""), config.get("recipients_cc", ""), config.get("recipients_bcc", "")]))
         try:
-            send_email(
-                subject=f"[LicenseMGR] {', '.join(subject_parts)}",
-                body=body,
-                config=config,
-            )
-            result_str = f"OK — {len(expiring)} alerte(s) envoyée(s) → {config.get('recipients', '')}"
+            send_email(subject=subject, body=body, config=config)
+            result_str = f"OK — {len(expiring)} alerte(s) envoyée(s) → {dests}"
         except Exception as e:
             result_str = f"ERREUR envoi email : {e}"
     else:
