@@ -324,12 +324,22 @@ def route_lic_save(vendor):
         return jsonify({"error": "Champ 'content' manquant"}), 400
     try:
         backup_path = backup(cfg) if cfg["LIC_PATH"].exists() else None
+        lmdown_result = lmdown(cfg)
         cfg["LIC_PATH"].write_text(data["content"], encoding="utf-8")
+        restart_result = restart(cfg)
         log_action(session["user"], "lic_save", f"vendor={vendor}")
+        if restart_result["returncode"] != 0:
+            return jsonify({
+                "error":  f"Fichier sauvegardé mais échec du redémarrage : {restart_result.get('stderr', '')}",
+                "path":   str(cfg["LIC_PATH"]),
+                "backup": backup_path,
+            }), 500
         return jsonify({
-            "message": "Fichier sauvegardé",
+            "message": "Fichier sauvegardé, serveur redémarré",
             "path":    str(cfg["LIC_PATH"]),
             "backup":  backup_path,
+            "lmdown":  lmdown_result,
+            "restart": restart_result,
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -450,7 +460,7 @@ def api_notif_config():
         "enabled", "smtp_host", "smtp_port", "smtp_user", "smtp_tls",
         "smtp_verify_ssl", "smtp_need_auth", "smtp_from",
         "recipients", "recipients_cc", "recipients_bcc",
-        "subject_template", "body_template",
+        "subject_template", "body_template", "body_is_html",
         "threshold_days", "check_time",
     }
     filtered = {k: v for k, v in data.items() if k in allowed}
@@ -469,9 +479,16 @@ def api_notif_config():
 def api_notif_test():
     try:
         config = get_notif_config()
+        is_html = config.get("body_is_html") == "1"
+        body = (
+            "<p>Ceci est un email de test envoyé depuis LicenseMGR.</p>"
+            "<p>La configuration SMTP fonctionne correctement.</p>"
+        ) if is_html else (
+            "Ceci est un email de test envoyé depuis LicenseMGR.\n\nLa configuration SMTP fonctionne correctement."
+        )
         send_email(
             subject="[LicenseMGR] Email de test",
-            body="Ceci est un email de test envoyé depuis LicenseMGR.\n\nLa configuration SMTP fonctionne correctement.",
+            body=body,
             config=config,
         )
         log_action(session["user"], "notif_test_email")

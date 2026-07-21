@@ -314,19 +314,27 @@
       <div class="section-body">
         <div class="form-field">
           <label>Sujet</label>
-          <input type="text" id="subject_template" placeholder="[LicenseMGR] {{ '{{' }}nb_expire{{ '}}' }} expirée(s), {{ '{{' }}nb_bientot{{ '}}' }} expire(nt) bientôt" value="{{ config.subject_template }}" />
+          <input type="text" id="subject_template" placeholder="[LicenseMGR] {{ '{{' }}expired_count{{ '}}' }} expirée(s), {{ '{{' }}expiring_count{{ '}}' }} expire(nt) bientôt" value="{{ config.subject_template }}" />
         </div>
         <div class="form-field">
           <label>Corps du message</label>
-          <textarea id="body_template" rows="8" placeholder="Généré le : {{ '{{' }}date{{ '}}' }}&#10;Seuil configuré : {{ '{{' }}seuil{{ '}}' }} jour(s)&#10;&#10;{{ '{{' }}liste{{ '}}' }}">{{ config.body_template }}</textarea>
+          <textarea id="body_template" rows="8" placeholder="Généré le : {{ '{{' }}date{{ '}}' }}&#10;Seuil configuré : {{ '{{' }}threshold{{ '}}' }} jour(s)&#10;&#10;{{ '{{' }}list{{ '}}' }}">{{ config.body_template }}</textarea>
           <div class="form-hint">
             Vide = modèle par défaut. Jetons disponibles :
             <code>{{ '{{' }}date{{ '}}' }}</code>,
-            <code>{{ '{{' }}seuil{{ '}}' }}</code>,
-            <code>{{ '{{' }}liste{{ '}}' }}</code>,
-            <code>{{ '{{' }}nb_expire{{ '}}' }}</code>,
-            <code>{{ '{{' }}nb_bientot{{ '}}' }}</code>
+            <code>{{ '{{' }}threshold{{ '}}' }}</code>,
+            <code>{{ '{{' }}list{{ '}}' }}</code> (tout),
+            <code>{{ '{{' }}expired_list{{ '}}' }}</code> (déjà expirées),
+            <code>{{ '{{' }}expiring_list{{ '}}' }}</code> (bientôt),
+            <code>{{ '{{' }}expired_count{{ '}}' }}</code>,
+            <code>{{ '{{' }}expiring_count{{ '}}' }}</code>
           </div>
+        </div>
+        <div class="auth-row" style="margin-top:.8rem">
+          <input type="checkbox" id="body_is_html"
+            {% if config.body_is_html == '1' %}checked{% endif %} />
+          <label for="body_is_html">Corps au format HTML</label>
+          <span class="form-hint" style="margin:0 0 0 .3rem">(saisir des balises HTML ci-dessus, ex: &lt;b&gt;, &lt;br&gt;, &lt;table&gt;)</span>
         </div>
       </div>
     </div>
@@ -443,6 +451,7 @@
       recipients_bcc:       document.getElementById("recipients_bcc").value.trim(),
       subject_template:     document.getElementById("subject_template").value.trim(),
       body_template:        document.getElementById("body_template").value,
+      body_is_html:         document.getElementById("body_is_html").checked ? "1" : "0",
       threshold_days: document.getElementById("threshold_days").value.trim(),
       check_time:     document.getElementById("check_time").value.trim(),
     };

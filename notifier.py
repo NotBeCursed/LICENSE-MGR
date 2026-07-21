@@ -27,19 +27,20 @@ _DEFAULTS = {
     "recipients_bcc":       "",
     "subject_template":     "",
     "body_template":        "",
+    "body_is_html":         "0",
     "threshold_days":       "30",
     "check_time":           "08:00",
     "last_check_time":      "",
     "last_check_result":    "",
 }
 
-DEFAULT_SUBJECT_TEMPLATE = "[LicenseMGR] {{nb_expire}} expirée(s), {{nb_bientot}} expire(nt) bientôt"
+DEFAULT_SUBJECT_TEMPLATE = "[LicenseMGR] {{expired_count}} expirée(s), {{expiring_count}} expire(nt) bientôt"
 DEFAULT_BODY_TEMPLATE = (
     "LicenseMGR — Rapport d'expiration\n"
     "Généré le : {{date}}\n"
-    "Seuil configuré : {{seuil}} jour(s)\n\n"
+    "Seuil configuré : {{threshold}} jour(s)\n\n"
     "Licences nécessitant une attention :\n\n"
-    "{{liste}}\n\n"
+    "{{list}}\n\n"
     "Connectez-vous à l'interface pour mettre à jour les fichiers de licence."
 )
 
@@ -200,7 +201,12 @@ def send_email(subject: str, body: str, config: dict) -> None:
         msg["Cc"] = ", ".join(cc_addrs)
     if bcc_addrs:
         msg["Bcc"] = ", ".join(bcc_addrs)
-    msg.set_content(body)
+
+    if config.get("body_is_html", "0") == "1":
+        msg.set_content("Ce message nécessite un client de messagerie compatible HTML.")
+        msg.add_alternative(body, subtype="html")
+    else:
+        msg.set_content(body)
 
     with _build_smtp(config) as smtp:
         smtp.send_message(msg)
@@ -225,22 +231,29 @@ def check_and_notify() -> str:
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     if expiring:
-        lines = []
+        lines         = []
+        lines_expire  = []
+        lines_bientot = []
         for item in expiring:
             if item["status"] == "expired":
-                lines.append(f"  [EXPIREE]  [{item['vendor'].upper()}] {item['feature']} — expirée le {item['exp_date']}")
+                line = f"  [EXPIREE]  [{item['vendor'].upper()}] {item['feature']} — expirée le {item['exp_date']}"
+                lines_expire.append(line)
             else:
-                lines.append(f"  [J-{item['days_left']:>3}]    [{item['vendor'].upper()}] {item['feature']} — expire le {item['exp_date']}")
+                line = f"  [J-{item['days_left']:>3}]    [{item['vendor'].upper()}] {item['feature']} — expire le {item['exp_date']}"
+                lines_bientot.append(line)
+            lines.append(line)
 
-        expired_count  = sum(1 for i in expiring if i["status"] == "expired")
-        expiring_count = sum(1 for i in expiring if i["status"] == "expiring")
+        expired_count  = len(lines_expire)
+        expiring_count = len(lines_bientot)
 
         tokens = {
-            "{{date}}":      ts,
-            "{{seuil}}":     str(threshold),
-            "{{liste}}":     "\n".join(lines),
-            "{{nb_expire}}": str(expired_count),
-            "{{nb_bientot}}": str(expiring_count),
+            "{{date}}":           ts,
+            "{{threshold}}":      str(threshold),
+            "{{list}}":           "\n".join(lines),
+            "{{expired_list}}":   "\n".join(lines_expire)  or "  (aucune)",
+            "{{expiring_list}}":  "\n".join(lines_bientot) or "  (aucune)",
+            "{{expired_count}}":  str(expired_count),
+            "{{expiring_count}}": str(expiring_count),
         }
         subject_tmpl = config.get("subject_template") or DEFAULT_SUBJECT_TEMPLATE
         body_tmpl    = config.get("body_template") or DEFAULT_BODY_TEMPLATE

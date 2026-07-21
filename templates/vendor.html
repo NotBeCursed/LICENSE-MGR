@@ -718,15 +718,27 @@
 
   async function saveLicFile() {
     var con = document.getElementById("editorConsole");
-    showConsole(con, "// sauvegarde en cours...");
-    var r = await apiCall(API + "/lic/save", "POST", { content: editorArea.value });
-    if (r.ok) {
-      originalContent = editorArea.value;
-      updateEditorMeta();
-      showConsole(con, "OK : " + r.data.message + "\n-> backup : " + r.data.backup);
+    var confirmed = confirm(
+      "Sauvegarder va arrêter puis redémarrer le serveur de licences \"" + VENDOR + "\" " +
+      "pour appliquer les modifications (backup automatique avant).\n\nContinuer ?"
+    );
+    if (!confirmed) {
       location.reload();
-    } else {
-      showConsole(con, "ERREUR : " + r.data.error, true);
+      return;
+    }
+    showConsole(con, "// backup + arret serveur + sauvegarde + redemarrage en cours...");
+    try {
+      var r = await apiCall(API + "/lic/save", "POST", { content: editorArea.value });
+      if (r.ok) {
+        originalContent = editorArea.value;
+        updateEditorMeta();
+        showConsole(con, "OK : " + r.data.message + "\n-> backup : " + r.data.backup);
+        location.reload();
+      } else {
+        showConsole(con, "ERREUR : " + r.data.error, true);
+      }
+    } catch (e) {
+      showConsole(con, "ERREUR réseau/serveur : " + e.message, true);
     }
   }
 
