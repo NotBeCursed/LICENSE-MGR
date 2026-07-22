@@ -297,10 +297,24 @@
             <div class="form-hint">Alerter si expiration &lt; N jours</div>
           </div>
           <div class="form-field">
-            <label>Heure de vérification quotidienne</label>
+            <label>Heure de vérification</label>
             <input type="time" id="check_time" value="{{ config.check_time or '08:00' }}" />
-            <div class="form-hint">Exécution chaque jour à cette heure</div>
+            <div class="form-hint">Exécution à cette heure, les jours cochés ci-dessous</div>
           </div>
+        </div>
+        <div class="form-field" style="margin-top:.8rem">
+          <label>Jours d'envoi</label>
+          <div class="auth-row" id="notifyDays" style="flex-wrap:wrap;gap:.6rem">
+            {% set day_labels = [('0','Lun'), ('1','Mar'), ('2','Mer'), ('3','Jeu'), ('4','Ven'), ('5','Sam'), ('6','Dim')] %}
+            {% set active_days = (config.notify_days or '0,1,2,3,4,5,6').split(',') %}
+            {% for val, label in day_labels %}
+            <label style="display:flex;align-items:center;gap:.3rem;font-weight:normal">
+              <input type="checkbox" class="notify-day" value="{{ val }}" {% if val in active_days %}checked{% endif %} />
+              {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+          <div class="form-hint">Aucun jour coché = envoi tous les jours</div>
         </div>
         <div class="form-field" style="margin-top:.5rem">
           <button class="btn btn-primary" onclick="saveConfig()" style="width:100%">Sauvegarder la configuration</button>
@@ -327,7 +341,9 @@
             <code>{{ '{{' }}expired_list{{ '}}' }}</code>,
             <code>{{ '{{' }}expiring_list{{ '}}' }}</code>,
             <code>{{ '{{' }}expired_count{{ '}}' }}</code>,
-            <code>{{ '{{' }}expiring_count{{ '}}' }}</code>
+            <code>{{ '{{' }}expiring_count{{ '}}' }}</code>,
+            <code>{{ '{{' }}active_list{{ '}}' }}</code>,
+            <code>{{ '{{' }}active_count{{ '}}' }}</code>
           </div>
         </div>
         <div class="auth-row" style="margin-top:.8rem">
@@ -454,6 +470,7 @@
       body_is_html:         document.getElementById("body_is_html").checked ? "1" : "0",
       threshold_days: document.getElementById("threshold_days").value.trim(),
       check_time:     document.getElementById("check_time").value.trim(),
+      notify_days:    Array.prototype.slice.call(document.querySelectorAll(".notify-day:checked")).map(function(c) { return c.value; }).join(","),
     };
     if (pwd) payload.smtp_password = pwd;
     showConsole(con, "// sauvegarde en cours...");

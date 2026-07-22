@@ -30,6 +30,7 @@ _DEFAULTS = {
     "body_is_html":         "0",
     "threshold_days":       "30",
     "check_time":           "08:00",
+    "notify_days":          "0,1,2,3,4,5,6",
     "last_check_time":      "",
     "last_check_result":    "",
 }
@@ -91,7 +92,8 @@ def set_config(data: dict) -> None:
 
 # ===== EXPIRY PARSING =====
 
-def _parse_expiring(content: str, vendor_name: str, threshold_days: int) -> list:
+def _parse_licenses(content: str, vendor_name: str, threshold_days: int) -> list:
+    """Parse toutes les FEATURE/INCREMENT et statue expired/expiring/active."""
     today = datetime.now().date()
     results = []
 
@@ -122,20 +124,32 @@ def _parse_expiring(content: str, vendor_name: str, threshold_days: int) -> list
         exp_date_str = tokens[4]
 
         if exp_date_str.lower() == "permanent":
+            results.append({
+                "vendor":    vendor_name,
+                "feature":   feat_name,
+                "exp_date":  "permanent",
+                "days_left": None,
+                "status":    "active",
+            })
             continue
 
         for fmt in ("%d-%b-%Y", "%d-%b-%y"):
             try:
                 exp_date  = datetime.strptime(exp_date_str, fmt).date()
                 days_left = (exp_date - today).days
-                if days_left <= threshold_days:
-                    results.append({
-                        "vendor":    vendor_name,
-                        "feature":   feat_name,
-                        "exp_date":  exp_date_str,
-                        "days_left": days_left,
-                        "status":    "expired" if days_left < 0 else "expiring",
-                    })
+                if days_left < 0:
+                    status = "expired"
+                elif days_left <= threshold_days:
+                    status = "expiring"
+                else:
+                    status = "active"
+                results.append({
+                    "vendor":    vendor_name,
+                    "feature":   feat_name,
+                    "exp_date":  exp_date_str,
+                    "days_left": days_left,
+                    "status":    status,
+                })
                 break
             except ValueError:
                 continue
@@ -220,13 +234,16 @@ def check_and_notify() -> str:
     config    = get_config()
     threshold = int(config.get("threshold_days", 30) or 30)
 
-    expiring = []
+    all_items = []
     for vendor_name, cfg in VENDORS.items():
         lic_path = cfg["LIC_PATH"]
         if not lic_path.exists():
             continue
         content = lic_path.read_text(errors="replace")
-        expiring.extend(_parse_expiring(content, vendor_name, threshold))
+        all_items.extend(_parse_licenses(content, vendor_name, threshold))
+
+    expiring = [i for i in all_items if i["status"] in ("expired", "expiring")]
+    active   = [i for i in all_items if i["status"] == "active"]
 
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
@@ -243,8 +260,14 @@ def check_and_notify() -> str:
                 lines_bientot.append(line)
             lines.append(line)
 
+        lines_active = [
+            f"  [ACTIVE]   [{item['vendor'].upper()}] {item['feature']} — {'permanente' if item['exp_date'] == 'permanent' else 'expire le ' + item['exp_date']}"
+            for item in active
+        ]
+
         expired_count  = len(lines_expire)
         expiring_count = len(lines_bientot)
+        active_count   = len(lines_active)
         sep = "<br>\n" if config.get("body_is_html") == "1" else "\n"
 
         tokens = {
@@ -253,8 +276,10 @@ def check_and_notify() -> str:
             "{{list}}":           sep.join(lines),
             "{{expired_list}}":   sep.join(lines_expire)  or "  (aucune)",
             "{{expiring_list}}":  sep.join(lines_bientot) or "  (aucune)",
+            "{{active_list}}":    sep.join(lines_active)  or "  (aucune)",
             "{{expired_count}}":  str(expired_count),
             "{{expiring_count}}": str(expiring_count),
+            "{{active_count}}":   str(active_count),
         }
         subject_tmpl = config.get("subject_template") or DEFAULT_SUBJECT_TEMPLATE
         body_tmpl    = config.get("body_template") or DEFAULT_BODY_TEMPLATE
@@ -289,11 +314,22 @@ def _next_trigger(check_time: str) -> float:
     return (target - now).total_seconds()
 
 
-def _scheduler_loop(check_time: str) -> None:
+def _parse_notify_days(notify_days: str) -> set:
+    """'0,1,2,3,4,5,6' -> {0..6} (0=lundi, cf. datetime.weekday())."""
+    try:
+        days = {int(d) for d in notify_days.split(",") if d.strip() != ""}
+    except ValueError:
+        days = set()
+    return days & set(range(7)) or set(range(7))
+
+
+def _scheduler_loop(check_time: str, notify_days: set) -> None:
     while True:
         wait = _next_trigger(check_time)
         if _stop_event.wait(timeout=wait):
             break
+        if datetime.now().weekday() not in notify_days:
+            continue
         try:
             check_and_notify()
         except Exception:
@@ -305,11 +341,12 @@ def start_scheduler() -> None:
     config = get_config()
     if config.get("enabled") != "1":
         return
-    check_time = config.get("check_time") or "08:00"
+    check_time  = config.get("check_time") or "08:00"
+    notify_days = _parse_notify_days(config.get("notify_days") or "0,1,2,3,4,5,6")
     _stop_event.set()
     _stop_event = threading.Event()
     _scheduler_thread = threading.Thread(
-        target=_scheduler_loop, args=(check_time,), daemon=True
+        target=_scheduler_loop, args=(check_time, notify_days), daemon=True
     )
     _scheduler_thread.start()
 
