@@ -245,13 +245,14 @@ def check_and_notify() -> str:
 
         expired_count  = len(lines_expire)
         expiring_count = len(lines_bientot)
+        sep = "<br>\n" if config.get("body_is_html") == "1" else "\n"
 
         tokens = {
             "{{date}}":           ts,
             "{{threshold}}":      str(threshold),
-            "{{list}}":           "\n".join(lines),
-            "{{expired_list}}":   "\n".join(lines_expire)  or "  (aucune)",
-            "{{expiring_list}}":  "\n".join(lines_bientot) or "  (aucune)",
+            "{{list}}":           sep.join(lines),
+            "{{expired_list}}":   sep.join(lines_expire)  or "  (aucune)",
+            "{{expiring_list}}":  sep.join(lines_bientot) or "  (aucune)",
             "{{expired_count}}":  str(expired_count),
             "{{expiring_count}}": str(expiring_count),
         }
