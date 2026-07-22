@@ -570,6 +570,7 @@
       if (rs.ok && rs.data.returncode === 0) {
         showConsole(con, "OK - Serveur operationnel (tentative " + attempt + "/" + MAX_ATTEMPTS + ")\n\n// lmstat ->\n" + output);
         updateStatusBadge(true);
+        setTimeout(function() { location.reload(); }, 2000);
         return;
       }
       if (attempt < MAX_ATTEMPTS) {
